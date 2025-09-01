@@ -1,5 +1,6 @@
 // Global variables
-let currentCollection = JSON.parse(localStorage.getItem('pennyCollection')) || [];
+let albums = JSON.parse(localStorage.getItem('pennyAlbums')) || [];
+let currentAlbum = null;
 let currentImageData = null;
 let currentAnalysis = null;
 
@@ -10,16 +11,18 @@ const uploadPreview = document.getElementById('uploadPreview');
 const previewImage = document.getElementById('previewImage');
 const analyzeBtn = document.getElementById('analyzeBtn');
 const analysisSection = document.getElementById('analysisSection');
-const collectionGrid = document.getElementById('collectionGrid');
-const searchInput = document.getElementById('searchInput');
-const sortSelect = document.getElementById('sortSelect');
+const albumsGrid = document.getElementById('albumsGrid');
+const createAlbumBtn = document.getElementById('createAlbumBtn');
+const createAlbumModal = document.getElementById('createAlbumModal');
+const albumViewModal = document.getElementById('albumViewModal');
 const editModal = document.getElementById('editModal');
+const emptyAlbumsState = document.getElementById('emptyAlbumsState');
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
     initializeEventListeners();
-    renderCollection();
-    showEmptyStateIfNeeded();
+    renderAlbums();
+    showEmptyAlbumsStateIfNeeded();
 });
 
 // Event listeners setup
@@ -35,12 +38,11 @@ function initializeEventListeners() {
     // Analysis events
     analyzeBtn.addEventListener('click', analyzeImage);
 
-    // Collection events
-    searchInput.addEventListener('input', filterCollection);
-    sortSelect.addEventListener('change', sortCollection);
+    // Album events
+    createAlbumBtn.addEventListener('click', openCreateAlbumModal);
 
     // Save and edit events
-    document.getElementById('saveBtn').addEventListener('click', saveToCollection);
+    document.getElementById('saveBtn').addEventListener('click', saveToAlbum);
     document.getElementById('editBtn').addEventListener('click', openEditModal);
 }
 
@@ -205,133 +207,43 @@ function closeModal() {
 }
 
 function saveEdit() {
-    const formData = {
-        name: document.getElementById('editName').value,
-        location: document.getElementById('editLocation').value,
-        description: document.getElementById('editDescription').value,
-        dateCollected: document.getElementById('editDate').value,
-        notes: document.getElementById('editNotes').value
-    };
+    const pennyId = editModal.dataset.pennyId;
+    
+    if (pennyId) {
+        // Editing existing penny
+        const penny = currentCollection.find(p => p.id === parseInt(pennyId));
+        if (penny) {
+            penny.name = document.getElementById('editName').value;
+            penny.location = document.getElementById('editLocation').value;
+            penny.description = document.getElementById('editDescription').value;
+            penny.dateCollected = document.getElementById('editDate').value;
+            penny.notes = document.getElementById('editNotes').value;
+            
+            saveCollectionToStorage();
+            renderCollection();
+        }
+    } else {
+        // Editing current analysis before saving
+        currentAnalysis = {
+            ...currentAnalysis,
+            name: document.getElementById('editName').value,
+            location: document.getElementById('editLocation').value,
+            description: document.getElementById('editDescription').value,
+            dateCollected: document.getElementById('editDate').value,
+            notes: document.getElementById('editNotes').value
+        };
 
-    // Update current analysis
-    currentAnalysis = {
-        ...currentAnalysis,
-        ...formData
-    };
+        // Update the display
+        document.getElementById('locationResult').textContent = currentAnalysis.location;
+        document.getElementById('descriptionResult').textContent = currentAnalysis.description;
+        document.getElementById('dateResult').textContent = currentAnalysis.date;
+    }
 
     closeModal();
-    
-    // Update the display
-    document.getElementById('locationResult').textContent = currentAnalysis.location;
-    document.getElementById('descriptionResult').textContent = currentAnalysis.description;
-    document.getElementById('dateResult').textContent = currentAnalysis.date;
+    showNotification('Changes saved successfully!', 'success');
 }
 
-// Collection rendering
-function renderCollection() {
-    if (currentCollection.length === 0) {
-        collectionGrid.innerHTML = `
-            <div class="empty-state">
-                <i class="fas fa-coins"></i>
-                <h3>No pennies in your collection yet</h3>
-                <p>Upload your first elongated penny to get started!</p>
-            </div>
-        `;
-        return;
-    }
-
-    collectionGrid.innerHTML = currentCollection.map(penny => `
-        <div class="collection-item" data-id="${penny.id}">
-            <img src="${penny.image}" alt="${penny.name}">
-            <h3>${penny.name}</h3>
-            <div class="location">${penny.location}</div>
-            <div class="description">${penny.description}</div>
-            <div class="date">Collected: ${penny.dateCollected}</div>
-            ${penny.notes ? `<div class="notes">Notes: ${penny.notes}</div>` : ''}
-            <div class="actions">
-                <button class="edit" onclick="editCollectionItem(${penny.id})">
-                    <i class="fas fa-edit"></i> Edit
-                </button>
-                <button class="delete" onclick="deleteCollectionItem(${penny.id})">
-                    <i class="fas fa-trash"></i> Delete
-                </button>
-            </div>
-        </div>
-    `).join('');
-}
-
-function editCollectionItem(id) {
-    const penny = currentCollection.find(p => p.id === id);
-    if (!penny) return;
-
-    // Populate modal with penny data
-    document.getElementById('editName').value = penny.name;
-    document.getElementById('editLocation').value = penny.location;
-    document.getElementById('editDescription').value = penny.description;
-    document.getElementById('editDate').value = penny.dateCollected;
-    document.getElementById('editNotes').value = penny.notes || '';
-
-    // Store the penny ID for updating
-    editModal.dataset.pennyId = id;
-    editModal.style.display = 'block';
-}
-
-function deleteCollectionItem(id) {
-    if (confirm('Are you sure you want to delete this penny from your collection?')) {
-        currentCollection = currentCollection.filter(p => p.id !== id);
-        saveCollectionToStorage();
-        renderCollection();
-        showNotification('Penny removed from collection', 'info');
-    }
-}
-
-// Collection filtering and sorting
-function filterCollection() {
-    const searchTerm = searchInput.value.toLowerCase();
-    const items = document.querySelectorAll('.collection-item');
-    
-    items.forEach(item => {
-        const name = item.querySelector('h3').textContent.toLowerCase();
-        const location = item.querySelector('.location').textContent.toLowerCase();
-        const description = item.querySelector('.description').textContent.toLowerCase();
-        
-        const matches = name.includes(searchTerm) || 
-                       location.includes(searchTerm) || 
-                       description.includes(searchTerm);
-        
-        item.style.display = matches ? 'block' : 'none';
-    });
-}
-
-function sortCollection() {
-    const sortBy = sortSelect.value;
-    
-    currentCollection.sort((a, b) => {
-        switch (sortBy) {
-            case 'date':
-                return new Date(b.dateCollected) - new Date(a.dateCollected);
-            case 'location':
-                return a.location.localeCompare(b.location);
-            case 'name':
-                return a.name.localeCompare(b.name);
-            default:
-                return 0;
-        }
-    });
-    
-    renderCollection();
-}
-
-// Storage management
-function saveCollectionToStorage() {
-    localStorage.setItem('pennyCollection', JSON.stringify(currentCollection));
-}
-
-function showEmptyStateIfNeeded() {
-    if (currentCollection.length === 0) {
-        renderCollection();
-    }
-}
+// Album rendering and management functions are now in the album management section below
 
 // Utility functions
 function showNotification(message, type = 'info') {
@@ -380,5 +292,304 @@ window.addEventListener('click', function(event) {
 document.addEventListener('keydown', function(event) {
     if (event.key === 'Escape') {
         closeModal();
+        closeCreateAlbumModal();
+        closeAlbumViewModal();
     }
 });
+
+// Modal functions
+function closeModal() {
+    editModal.style.display = 'none';
+    window.currentEditingPenny = null;
+}
+
+// Album Management Functions
+function openCreateAlbumModal() {
+    createAlbumModal.style.display = 'block';
+    document.getElementById('albumName').focus();
+}
+
+function closeCreateAlbumModal() {
+    createAlbumModal.style.display = 'none';
+    document.getElementById('createAlbumForm').reset();
+}
+
+function createAlbum() {
+    const name = document.getElementById('albumName').value.trim();
+    const description = document.getElementById('albumDescription').value.trim();
+    const category = document.getElementById('albumCategory').value;
+    
+    if (!name) {
+        showNotification('Please enter an album name', 'error');
+        return;
+    }
+    
+    const newAlbum = {
+        id: Date.now().toString(),
+        name: name,
+        description: description,
+        category: category,
+        pennies: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+    };
+    
+    albums.push(newAlbum);
+    saveAlbumsToStorage();
+    renderAlbums();
+    closeCreateAlbumModal();
+    showNotification('Album created successfully!', 'success');
+}
+
+function renderAlbums() {
+    if (albums.length === 0) {
+        albumsGrid.style.display = 'none';
+        emptyAlbumsState.style.display = 'block';
+        return;
+    }
+    
+    albumsGrid.style.display = 'grid';
+    emptyAlbumsState.style.display = 'none';
+    
+    albumsGrid.innerHTML = albums.map(album => `
+        <div class="album-card" data-album-id="${album.id}">
+            <div class="album-header">
+                <h3 class="album-title">${album.name}</h3>
+                <span class="album-category">${getCategoryDisplayName(album.category)}</span>
+            </div>
+            <p class="album-description">${album.description || 'No description'}</p>
+            <div class="album-stats">
+                <span class="penny-count">
+                    <i class="fas fa-coins"></i> ${album.pennies.length} penny${album.pennies.length !== 1 ? 'ies' : ''}
+                </span>
+                <span class="album-date">Created ${new Date(album.createdAt).toLocaleDateString()}</span>
+            </div>
+            <div class="album-actions">
+                <button class="album-action-btn view-btn" onclick="openAlbumView('${album.id}')">
+                    <i class="fas fa-eye"></i> View
+                </button>
+                <button class="album-action-btn edit-btn" onclick="editAlbum('${album.id}')">
+                    <i class="fas fa-edit"></i> Edit
+                </button>
+                <button class="album-action-btn delete-btn" onclick="deleteAlbum('${album.id}')">
+                    <i class="fas fa-trash"></i> Delete
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function getCategoryDisplayName(category) {
+    const categories = {
+        'theme-park': 'Theme Parks',
+        'national-park': 'National Parks',
+        'city-landmark': 'City Landmarks',
+        'museum': 'Museums',
+        'zoo-aquarium': 'Zoos & Aquariums',
+        'other': 'Other'
+    };
+    return categories[category] || category;
+}
+
+function openAlbumView(albumId) {
+    currentAlbum = albums.find(album => album.id === albumId);
+    if (!currentAlbum) return;
+    
+    document.getElementById('albumViewTitle').textContent = currentAlbum.name;
+    
+    // Update album info
+    document.getElementById('albumInfo').innerHTML = `
+        <div class="album-info-content">
+            <p><strong>Category:</strong> ${getCategoryDisplayName(currentAlbum.category)}</p>
+            <p><strong>Description:</strong> ${currentAlbum.description || 'No description'}</p>
+            <p><strong>Created:</strong> ${new Date(currentAlbum.createdAt).toLocaleDateString()}</p>
+            <p><strong>Pennies:</strong> ${currentAlbum.pennies.length}</p>
+        </div>
+    `;
+    
+    renderAlbumPennies();
+    albumViewModal.style.display = 'block';
+}
+
+function closeAlbumViewModal() {
+    albumViewModal.style.display = 'none';
+    currentAlbum = null;
+    resetUpload();
+}
+
+function renderAlbumPennies() {
+    const penniesGrid = document.getElementById('penniesGrid');
+    
+    if (currentAlbum.pennies.length === 0) {
+        penniesGrid.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-coins"></i>
+                <h4>No Pennies Yet</h4>
+                <p>Add your first penny to this album!</p>
+            </div>
+        `;
+        return;
+    }
+    
+    penniesGrid.innerHTML = currentAlbum.pennies.map(penny => `
+        <div class="penny-item" data-penny-id="${penny.id}">
+            <img src="${penny.imageData}" alt="${penny.name}" class="penny-image">
+            <div class="penny-info">
+                <h4>${penny.name}</h4>
+                <p class="location">${penny.location}</p>
+                <p class="description">${penny.description}</p>
+                <p class="date">${penny.dateCollected ? new Date(penny.dateCollected).toLocaleDateString() : 'No date'}</p>
+            </div>
+            <div class="penny-actions">
+                <button class="penny-action-btn edit-btn" onclick="editPennyInAlbum('${penny.id}')">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="penny-action-btn delete-btn" onclick="deletePennyFromAlbum('${penny.id}')">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function editAlbum(albumId) {
+    const album = albums.find(a => a.id === albumId);
+    if (!album) return;
+    
+    // For now, just show a simple edit form
+    const newName = prompt('Enter new album name:', album.name);
+    if (newName && newName.trim()) {
+        album.name = newName.trim();
+        album.updatedAt = new Date().toISOString();
+        saveAlbumsToStorage();
+        renderAlbums();
+        showNotification('Album updated successfully!', 'success');
+    }
+}
+
+function updateAlbum(albumId, updates) {
+    const album = albums.find(a => a.id === albumId);
+    if (!album) return;
+    
+    Object.assign(album, updates);
+    album.updatedAt = new Date().toISOString();
+    saveAlbumsToStorage();
+    renderAlbums();
+}
+
+function deleteAlbum(albumId) {
+    if (!confirm('Are you sure you want to delete this album? This action cannot be undone.')) {
+        return;
+    }
+    
+    const index = albums.findIndex(a => a.id === albumId);
+    if (index > -1) {
+        albums.splice(index, 1);
+        saveAlbumsToStorage();
+        renderAlbums();
+        showNotification('Album deleted successfully!', 'success');
+    }
+}
+
+function saveToAlbum() {
+    if (!currentAlbum || !currentImageData || !currentAnalysis) {
+        showNotification('Please complete the analysis first', 'error');
+        return;
+    }
+    
+    const penny = {
+        id: Date.now().toString(),
+        name: currentAnalysis.location || 'Unknown Location',
+        location: currentAnalysis.location || 'Unknown',
+        description: currentAnalysis.description || 'No description',
+        dateCollected: currentAnalysis.date || new Date().toISOString().split('T')[0],
+        notes: '',
+        imageData: currentImageData,
+        analysis: currentAnalysis,
+        addedAt: new Date().toISOString()
+    };
+    
+    currentAlbum.pennies.push(penny);
+    currentAlbum.updatedAt = new Date().toISOString();
+    
+    saveAlbumsToStorage();
+    renderAlbumPennies();
+    resetUpload();
+    
+    showNotification('Penny added to album successfully!', 'success');
+}
+
+function editPennyInAlbum(pennyId) {
+    const penny = currentAlbum.pennies.find(p => p.id === pennyId);
+    if (!penny) return;
+    
+    // Populate edit form
+    document.getElementById('editName').value = penny.name;
+    document.getElementById('editLocation').value = penny.location;
+    document.getElementById('editDescription').value = penny.description;
+    document.getElementById('editDate').value = penny.dateCollected || '';
+    document.getElementById('editNotes').value = penny.notes || '';
+    
+    // Store current penny for editing
+    window.currentEditingPenny = penny;
+    
+    editModal.style.display = 'block';
+}
+
+function deletePennyFromAlbum(pennyId) {
+    if (!confirm('Are you sure you want to delete this penny?')) {
+        return;
+    }
+    
+    const index = currentAlbum.pennies.findIndex(p => p.id === pennyId);
+    if (index > -1) {
+        currentAlbum.pennies.splice(index, 1);
+        currentAlbum.updatedAt = new Date().toISOString();
+        saveAlbumsToStorage();
+        renderAlbumPennies();
+        showNotification('Penny deleted successfully!', 'success');
+    }
+}
+
+function saveEdit() {
+    if (!window.currentEditingPenny || !currentAlbum) return;
+    
+    const penny = window.currentEditingPenny;
+    penny.name = document.getElementById('editName').value;
+    penny.location = document.getElementById('editLocation').value;
+    penny.description = document.getElementById('editDescription').value;
+    penny.dateCollected = document.getElementById('editDate').value;
+    penny.notes = document.getElementById('editNotes').value;
+    penny.updatedAt = new Date().toISOString();
+    
+    currentAlbum.updatedAt = new Date().toISOString();
+    saveAlbumsToStorage();
+    renderAlbumPennies();
+    closeModal();
+    
+    showNotification('Penny updated successfully!', 'success');
+}
+
+function saveAlbumsToStorage() {
+    localStorage.setItem('pennyAlbums', JSON.stringify(albums));
+}
+
+function showEmptyAlbumsStateIfNeeded() {
+    if (albums.length === 0) {
+        renderAlbums();
+    }
+}
+
+// Close modals when clicking outside
+window.addEventListener('click', function(event) {
+    if (event.target === editModal) {
+        closeModal();
+    }
+    if (event.target === createAlbumModal) {
+        closeCreateAlbumModal();
+    }
+    if (event.target === albumViewModal) {
+        closeAlbumViewModal();
+    }
+});
+

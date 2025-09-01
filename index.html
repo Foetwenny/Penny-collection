@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Elongated Penny Collection</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="album-styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
@@ -18,123 +19,191 @@
         </header>
 
         <main class="main-content">
-            <!-- Upload Section -->
-            <section class="upload-section">
-                <div class="upload-card">
-                    <h2><i class="fas fa-upload"></i> Add New Penny</h2>
-                    <div class="upload-area" id="uploadArea">
-                        <div class="upload-content">
-                            <i class="fas fa-cloud-upload-alt"></i>
-                            <p>Drag & drop an image here or click to browse</p>
-                            <input type="file" id="imageInput" accept="image/*" hidden>
-                            <button class="upload-btn" onclick="document.getElementById('imageInput').click()">
-                                Choose Image
-                            </button>
-                        </div>
-                    </div>
-                    <div class="upload-preview" id="uploadPreview" style="display: none;">
-                        <img id="previewImage" src="" alt="Preview">
-                        <div class="preview-actions">
-                            <button class="analyze-btn" id="analyzeBtn">
-                                <i class="fas fa-magic"></i> Analyze with AI
-                            </button>
-                            <button class="reset-btn" onclick="resetUpload()">
-                                <i class="fas fa-times"></i> Reset
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Analysis Results -->
-            <section class="analysis-section" id="analysisSection" style="display: none;">
-                <div class="analysis-card">
-                    <h3><i class="fas fa-brain"></i> AI Analysis Results</h3>
-                    <div class="analysis-content">
-                        <div class="analysis-item">
-                            <label>Location:</label>
-                            <span id="locationResult">Analyzing...</span>
-                        </div>
-                        <div class="analysis-item">
-                            <label>Description:</label>
-                            <p id="descriptionResult">Analyzing...</p>
-                        </div>
-                        <div class="analysis-item">
-                            <label>Estimated Date:</label>
-                            <span id="dateResult">Analyzing...</span>
-                        </div>
-                    </div>
-                    <div class="analysis-actions">
-                        <button class="save-btn" id="saveBtn">
-                            <i class="fas fa-save"></i> Save to Collection
-                        </button>
-                        <button class="edit-btn" id="editBtn">
-                            <i class="fas fa-edit"></i> Edit Details
-                        </button>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Collection Display -->
-            <section class="collection-section">
-                <div class="collection-header">
-                    <h2><i class="fas fa-collection"></i> Your Collection</h2>
-                    <div class="collection-controls">
-                        <input type="text" id="searchInput" placeholder="Search collection..." class="search-input">
-                        <select id="sortSelect" class="sort-select">
-                            <option value="date">Sort by Date</option>
-                            <option value="location">Sort by Location</option>
-                            <option value="name">Sort by Name</option>
-                        </select>
-                    </div>
+            <!-- Album Management Section -->
+            <section class="album-section">
+                <div class="album-header">
+                    <h2><i class="fas fa-book"></i> Your Albums</h2>
+                    <button class="create-album-btn" id="createAlbumBtn">
+                        <i class="fas fa-plus"></i> Create New Album
+                    </button>
                 </div>
                 
-                <div class="collection-grid" id="collectionGrid">
-                    <!-- Collection items will be dynamically added here -->
+                <div class="albums-grid" id="albumsGrid">
+                    <!-- Albums will be dynamically added here -->
+                </div>
+                
+                <div class="empty-albums-state" id="emptyAlbumsState" style="display: none;">
+                    <i class="fas fa-book-open"></i>
+                    <h3>No Albums Yet</h3>
+                    <p>Create your first album to start organizing your penny collection!</p>
+                    <button class="create-album-btn" onclick="openCreateAlbumModal()">
+                        <i class="fas fa-plus"></i> Create Your First Album
+                    </button>
                 </div>
             </section>
+        
+            <!-- Create Album Modal -->
+            <div class="modal" id="createAlbumModal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Create New Album</h3>
+                        <button class="close-btn" onclick="closeCreateAlbumModal()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="createAlbumForm">
+                            <div class="form-group">
+                                <label for="albumName">Album Name:</label>
+                                <input type="text" id="albumName" required placeholder="e.g., Disney Collection, National Parks">
+                            </div>
+                            <div class="form-group">
+                                <label for="albumDescription">Description:</label>
+                                <textarea id="albumDescription" rows="3" placeholder="Describe what this album contains..."></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="albumCategory">Category:</label>
+                                <select id="albumCategory">
+                                    <option value="theme-park">Theme Parks</option>
+                                    <option value="national-park">National Parks</option>
+                                    <option value="city-landmark">City Landmarks</option>
+                                    <option value="museum">Museums</option>
+                                    <option value="zoo-aquarium">Zoos & Aquariums</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="cancel-btn" onclick="closeCreateAlbumModal()">Cancel</button>
+                        <button class="save-btn" onclick="createAlbum()">Create Album</button>
+                    </div>
+                </div>
+            </div>
+        
+            <!-- Album View Modal -->
+            <div class="modal" id="albumViewModal">
+                <div class="modal-content album-view-modal">
+                    <div class="modal-header">
+                        <h3 id="albumViewTitle">Album Name</h3>
+                        <button class="close-btn" onclick="closeAlbumViewModal()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="album-info" id="albumInfo">
+                            <!-- Album info will be displayed here -->
+                        </div>
+                        
+                        <!-- Add Penny Section -->
+                        <div class="add-penny-section">
+                            <h4><i class="fas fa-plus-circle"></i> Add New Penny</h4>
+                            <div class="upload-area" id="uploadArea">
+                                <div class="upload-content">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                    <p>Drag & drop an image here or click to browse</p>
+                                    <input type="file" id="imageInput" accept="image/*" hidden>
+                                    <button class="upload-btn" onclick="document.getElementById('imageInput').click()">
+                                        Choose Image
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="upload-preview" id="uploadPreview" style="display: none;">
+                                <img id="previewImage" src="" alt="Preview">
+                                <div class="preview-actions">
+                                    <button class="analyze-btn" id="analyzeBtn">
+                                        <i class="fas fa-magic"></i> Analyze with AI
+                                    </button>
+                                    <button class="reset-btn" onclick="resetUpload()">
+                                        <i class="fas fa-times"></i> Reset
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+        
+                        <!-- Analysis Results -->
+                        <div class="analysis-section" id="analysisSection" style="display: none;">
+                            <div class="analysis-card">
+                                <h4><i class="fas fa-brain"></i> AI Analysis Results</h4>
+                                <div class="analysis-content">
+                                    <div class="analysis-item">
+                                        <label>Location:</label>
+                                        <span id="locationResult">Analyzing...</span>
+                                    </div>
+                                    <div class="analysis-item">
+                                        <label>Description:</label>
+                                        <p id="descriptionResult">Analyzing...</p>
+                                    </div>
+                                    <div class="analysis-item">
+                                        <label>Estimated Date:</label>
+                                        <span id="dateResult">Analyzing...</span>
+                                    </div>
+                                </div>
+                                <div class="analysis-actions">
+                                    <button class="save-btn" id="saveBtn">
+                                        <i class="fas fa-save"></i> Save to Album
+                                    </button>
+                                    <button class="edit-btn" id="editBtn">
+                                        <i class="fas fa-edit"></i> Edit Details
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+        
+                        <!-- Pennies in Album -->
+                        <div class="album-pennies">
+                            <h4><i class="fas fa-coins"></i> Pennies in this Album</h4>
+                            <div class="pennies-grid" id="penniesGrid">
+                                <!-- Pennies will be displayed here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        
+            <!-- Edit Penny Modal -->
+            <div class="modal" id="editModal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Edit Penny Details</h3>
+                        <button class="close-btn" onclick="closeModal()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="editForm">
+                            <div class="form-group">
+                                <label for="editName">Name/Title:</label>
+                                <input type="text" id="editName" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="editLocation">Location:</label>
+                                <input type="text" id="editLocation" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="editDescription">Description:</label>
+                                <textarea id="editDescription" rows="4" required></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="editDate">Date Collected:</label>
+                                <input type="date" id="editDate">
+                            </div>
+                            <div class="form-group">
+                                <label for="editNotes">Personal Notes:</label>
+                                <textarea id="editNotes" rows="3"></textarea>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="cancel-btn" onclick="closeModal()">Cancel</button>
+                        <button class="save-btn" onclick="saveEdit()">Save Changes</button>
+                    </div>
+                </div>
+            </div>
         </main>
     </div>
 
-    <!-- Edit Modal -->
-    <div class="modal" id="editModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Edit Penny Details</h3>
-                <button class="close-btn" onclick="closeModal()">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="modal-body">
-                <form id="editForm">
-                    <div class="form-group">
-                        <label for="editName">Name/Title:</label>
-                        <input type="text" id="editName" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="editLocation">Location:</label>
-                        <input type="text" id="editLocation" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="editDescription">Description:</label>
-                        <textarea id="editDescription" rows="4" required></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label for="editDate">Date Collected:</label>
-                        <input type="date" id="editDate">
-                    </div>
-                    <div class="form-group">
-                        <label for="editNotes">Personal Notes:</label>
-                        <textarea id="editNotes" rows="3"></textarea>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button class="cancel-btn" onclick="closeModal()">Cancel</button>
-                <button class="save-btn" onclick="saveEdit()">Save Changes</button>
-            </div>
-        </div>
-    </div>
+
 
     <script src="script.js"></script>
 </body>
