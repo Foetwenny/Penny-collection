@@ -673,6 +673,24 @@ body {
     border-color: #cbd5e0;
 }
 
+/* Album cover support */
+.album-card.has-cover {
+    padding: 0;
+}
+
+.album-card .album-cover {
+    width: 100%;
+    height: 140px;
+    background-image: var(--album-cover-url);
+    background-size: cover;
+    background-position: center;
+}
+
+.album-card .album-content {
+    padding: 1rem 1.25rem 1.25rem 1.25rem;
+    background: white;
+}
+
 .album-header {
     margin-bottom: 1rem;
 }

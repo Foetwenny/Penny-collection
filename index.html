@@ -72,6 +72,10 @@
                                     <option value="other">Other</option>
                                 </select>
                             </div>
+                            <div class="form-group">
+                                <label for="albumImageUrl">Background Image URL (optional):</label>
+                                <input type="url" id="albumImageUrl" placeholder="https://i.imgur.com/... or any image URL">
+                            </div>
                         </form>
                     </div>
                     <div class="modal-footer">
@@ -197,6 +201,52 @@
                     <div class="modal-footer">
                         <button class="cancel-btn" onclick="closeModal()">Cancel</button>
                         <button class="save-btn" onclick="saveEdit()">Save Changes</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Edit Album Modal -->
+            <div class="modal" id="editAlbumModal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Edit Album</h3>
+                        <button class="close-btn" onclick="closeEditAlbumModal()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="editAlbumForm">
+                            <div class="form-group">
+                                <label for="editAlbumName">Album Name:</label>
+                                <input type="text" id="editAlbumName" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="editAlbumDescription">Description:</label>
+                                <textarea id="editAlbumDescription" rows="3"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="editAlbumCategory">Category:</label>
+                                <select id="editAlbumCategory">
+                                    <option value="theme-park">Theme Parks</option>
+                                    <option value="national-park">National Parks</option>
+                                    <option value="city-landmark">City Landmarks</option>
+                                    <option value="museum">Museums</option>
+                                    <option value="zoo-aquarium">Zoos & Aquariums</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="editAlbumImageUrl">Background Image URL (optional):</label>
+                                <input type="url" id="editAlbumImageUrl" placeholder="https://i.imgur.com/... or any image URL">
+                            </div>
+                            <div class="form-group">
+                                <small>Tip: You can use public image links (e.g., Imgur). The image will be displayed as the album card background.</small>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="cancel-btn" onclick="closeEditAlbumModal()">Cancel</button>
+                        <button class="save-btn" onclick="saveAlbumEdit()">Save Album</button>
                     </div>
                 </div>
             </div>

@@ -15,6 +15,7 @@ const albumsGrid = document.getElementById('albumsGrid');
 const createAlbumBtn = document.getElementById('createAlbumBtn');
 const createAlbumModal = document.getElementById('createAlbumModal');
 const albumViewModal = document.getElementById('albumViewModal');
+const editAlbumModal = document.getElementById('editAlbumModal');
 const editModal = document.getElementById('editModal');
 const emptyAlbumsState = document.getElementById('emptyAlbumsState');
 
@@ -294,6 +295,7 @@ document.addEventListener('keydown', function(event) {
         closeModal();
         closeCreateAlbumModal();
         closeAlbumViewModal();
+        closeEditAlbumModal();
     }
 });
 
@@ -318,6 +320,7 @@ function createAlbum() {
     const name = document.getElementById('albumName').value.trim();
     const description = document.getElementById('albumDescription').value.trim();
     const category = document.getElementById('albumCategory').value;
+    const imageUrl = (document.getElementById('albumImageUrl')?.value || '').trim();
     
     if (!name) {
         showNotification('Please enter an album name', 'error');
@@ -329,6 +332,7 @@ function createAlbum() {
         name: name,
         description: description,
         category: category,
+        imageUrl: imageUrl,
         pennies: [],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
@@ -351,32 +355,38 @@ function renderAlbums() {
     albumsGrid.style.display = 'grid';
     emptyAlbumsState.style.display = 'none';
     
-    albumsGrid.innerHTML = albums.map(album => `
-        <div class="album-card" data-album-id="${album.id}">
-            <div class="album-header">
-                <h3 class="album-title">${album.name}</h3>
-                <span class="album-category">${getCategoryDisplayName(album.category)}</span>
+    albumsGrid.innerHTML = albums.map(album => {
+        const hasCover = album.imageUrl && album.imageUrl.length > 0;
+        const coverStyle = hasCover ? ` style="--album-cover-url: url('${album.imageUrl.replace(/"/g, '\\"')}')"` : '';
+        return `
+        <div class="album-card${hasCover ? ' has-cover' : ''}" data-album-id="${album.id}"${coverStyle}>
+            ${hasCover ? '<div class=\"album-cover\"></div>' : ''}
+            <div class="album-content">
+                <div class="album-header">
+                    <h3 class="album-title">${album.name}</h3>
+                    <span class="album-category">${getCategoryDisplayName(album.category)}</span>
+                </div>
+                <p class="album-description">${album.description || 'No description'}</p>
+                <div class="album-stats">
+                    <span class="penny-count">
+                        <i class="fas fa-coins"></i> ${album.pennies.length} ${album.pennies.length === 1 ? 'penny' : 'pennies'}
+                    </span>
+                    <span class="album-date">Created ${new Date(album.createdAt).toLocaleDateString()}</span>
+                </div>
+                <div class="album-actions">
+                    <button class="album-action-btn view-btn" onclick="openAlbumView('${album.id}')">
+                        <i class="fas fa-eye"></i> View
+                    </button>
+                    <button class="album-action-btn edit-btn" onclick="editAlbum('${album.id}')">
+                        <i class="fas fa-edit"></i> Edit
+                    </button>
+                    <button class="album-action-btn delete-btn" onclick="deleteAlbum('${album.id}')">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
+                </div>
             </div>
-            <p class="album-description">${album.description || 'No description'}</p>
-            <div class="album-stats">
-                <span class="penny-count">
-                    <i class="fas fa-coins"></i> ${album.pennies.length} penny${album.pennies.length !== 1 ? 'ies' : ''}
-                </span>
-                <span class="album-date">Created ${new Date(album.createdAt).toLocaleDateString()}</span>
-            </div>
-            <div class="album-actions">
-                <button class="album-action-btn view-btn" onclick="openAlbumView('${album.id}')">
-                    <i class="fas fa-eye"></i> View
-                </button>
-                <button class="album-action-btn edit-btn" onclick="editAlbum('${album.id}')">
-                    <i class="fas fa-edit"></i> Edit
-                </button>
-                <button class="album-action-btn delete-btn" onclick="deleteAlbum('${album.id}')">
-                    <i class="fas fa-trash"></i> Delete
-                </button>
-            </div>
-        </div>
-    `).join('');
+        </div>`;
+    }).join('');
 }
 
 function getCategoryDisplayName(category) {
@@ -456,15 +466,38 @@ function editAlbum(albumId) {
     const album = albums.find(a => a.id === albumId);
     if (!album) return;
     
-    // For now, just show a simple edit form
-    const newName = prompt('Enter new album name:', album.name);
-    if (newName && newName.trim()) {
-        album.name = newName.trim();
-        album.updatedAt = new Date().toISOString();
-        saveAlbumsToStorage();
-        renderAlbums();
-        showNotification('Album updated successfully!', 'success');
-    }
+    // Store current album and populate form
+    currentAlbum = album;
+    document.getElementById('editAlbumName').value = album.name || '';
+    document.getElementById('editAlbumDescription').value = album.description || '';
+    document.getElementById('editAlbumCategory').value = album.category || 'other';
+    document.getElementById('editAlbumImageUrl').value = album.imageUrl || '';
+    
+    editAlbumModal.dataset.albumId = album.id;
+    editAlbumModal.style.display = 'block';
+}
+
+function closeEditAlbumModal() {
+    editAlbumModal.style.display = 'none';
+    editAlbumModal.dataset.albumId = '';
+}
+
+function saveAlbumEdit() {
+    const albumId = editAlbumModal.dataset.albumId;
+    const album = albums.find(a => a.id === albumId);
+    if (!album) return;
+    
+    const name = document.getElementById('editAlbumName').value.trim();
+    const description = document.getElementById('editAlbumDescription').value.trim();
+    const category = document.getElementById('editAlbumCategory').value;
+    const imageUrl = (document.getElementById('editAlbumImageUrl').value || '').trim();
+    
+    Object.assign(album, { name, description, category, imageUrl });
+    album.updatedAt = new Date().toISOString();
+    saveAlbumsToStorage();
+    renderAlbums();
+    closeEditAlbumModal();
+    showNotification('Album updated successfully!', 'success');
 }
 
 function updateAlbum(albumId, updates) {
@@ -590,6 +623,9 @@ window.addEventListener('click', function(event) {
     }
     if (event.target === albumViewModal) {
         closeAlbumViewModal();
+    }
+    if (event.target === editAlbumModal) {
+        closeEditAlbumModal();
     }
 });
 
