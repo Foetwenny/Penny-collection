@@ -359,7 +359,7 @@ function renderAlbums() {
         const hasCover = album.imageUrl && album.imageUrl.length > 0;
         const coverStyle = hasCover ? ` style="--album-cover-url: url('${album.imageUrl.replace(/"/g, '\\"')}')"` : '';
         return `
-        <div class="album-card${hasCover ? ' has-cover' : ''}" data-album-id="${album.id}"${coverStyle}>
+        <div class="album-card${hasCover ? ' has-cover' : ''}" data-album-id="${album.id}"${coverStyle} onclick="openAlbumView('${album.id}')">
             ${hasCover ? '<div class=\"album-cover\"></div>' : ''}
             <div class="album-content">
                 <div class="album-header">
@@ -374,14 +374,8 @@ function renderAlbums() {
                     <span class="album-date">Created ${new Date(album.createdAt).toLocaleDateString()}</span>
                 </div>
                 <div class="album-actions">
-                    <button class="album-action-btn view-btn" onclick="openAlbumView('${album.id}')">
-                        <i class="fas fa-eye"></i> View
-                    </button>
-                    <button class="album-action-btn edit-btn" onclick="editAlbum('${album.id}')">
-                        <i class="fas fa-edit"></i> Edit
-                    </button>
-                    <button class="album-action-btn delete-btn" onclick="deleteAlbum('${album.id}')">
-                        <i class="fas fa-trash"></i> Delete
+                    <button class="album-action-btn delete-btn" onclick="event.stopPropagation(); deleteAlbum('${album.id}')">
+                        <i class="fas fa-trash"></i>
                     </button>
                 </div>
             </div>
@@ -394,6 +388,7 @@ function getCategoryDisplayName(category) {
         'theme-park': 'Theme Parks',
         'national-park': 'National Parks',
         'city-landmark': 'City Landmarks',
+        'natural-landmark': 'Natural Landmark',
         'museum': 'Museums',
         'zoo-aquarium': 'Zoos & Aquariums',
         'other': 'Other'
@@ -460,6 +455,19 @@ function renderAlbumPennies() {
             </div>
         </div>
     `).join('');
+}
+
+function editCurrentAlbum() {
+    if (!currentAlbum) return;
+    
+    // Store current album and populate form
+    document.getElementById('editAlbumName').value = currentAlbum.name || '';
+    document.getElementById('editAlbumDescription').value = currentAlbum.description || '';
+    document.getElementById('editAlbumCategory').value = currentAlbum.category || 'other';
+    document.getElementById('editAlbumImageUrl').value = currentAlbum.imageUrl || '';
+    
+    editAlbumModal.dataset.albumId = currentAlbum.id;
+    editAlbumModal.style.display = 'block';
 }
 
 function editAlbum(albumId) {

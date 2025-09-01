@@ -6,7 +6,7 @@
     <title>Elongated Penny Collection</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="album-styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
@@ -67,6 +67,7 @@
                                     <option value="theme-park">Theme Parks</option>
                                     <option value="national-park">National Parks</option>
                                     <option value="city-landmark">City Landmarks</option>
+                                    <option value="natural-landmark">Natural Landmark</option>
                                     <option value="museum">Museums</option>
                                     <option value="zoo-aquarium">Zoos & Aquariums</option>
                                     <option value="other">Other</option>
@@ -90,9 +91,14 @@
                 <div class="modal-content album-view-modal">
                     <div class="modal-header">
                         <h3 id="albumViewTitle">Album Name</h3>
-                        <button class="close-btn" onclick="closeAlbumViewModal()">
-                            <i class="fas fa-times"></i>
-                        </button>
+                        <div class="modal-header-actions">
+                            <button class="edit-album-btn" onclick="editCurrentAlbum()">
+                                <i class="fas fa-edit"></i> Edit Album
+                            </button>
+                            <button class="close-btn" onclick="closeAlbumViewModal()">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
                     </div>
                     <div class="modal-body">
                         <div class="album-info" id="albumInfo">
@@ -230,6 +236,7 @@
                                     <option value="theme-park">Theme Parks</option>
                                     <option value="national-park">National Parks</option>
                                     <option value="city-landmark">City Landmarks</option>
+                                    <option value="natural-landmark">Natural Landmark</option>
                                     <option value="museum">Museums</option>
                                     <option value="zoo-aquarium">Zoos & Aquariums</option>
                                     <option value="other">Other</option>
