@@ -872,6 +872,94 @@ body {
     background: #e53e3e;
 }
 
+.album-action-btn.share-btn {
+    background: #4299e1;
+    color: white;
+}
+
+.album-action-btn.share-btn:hover {
+    background: #3182ce;
+}
+
+/* Share Modal Styles */
+.share-url-container {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.share-url-container input {
+    flex: 1;
+    padding: 12px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    background: #f8f9fa;
+}
+
+.copy-btn {
+    background: #8b4513;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.copy-btn:hover {
+    background: #654321;
+}
+
+.share-options {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.share-btn {
+    background: #667eea;
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.share-btn:hover {
+    background: #5a67d8;
+}
+
+.share-album-btn {
+    background: #4299e1;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.share-album-btn:hover {
+    background: #3182ce;
+}
+
 /* Album View Full Screen */
 .album-view-screen {
     position: fixed;

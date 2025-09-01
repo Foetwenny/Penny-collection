@@ -3,6 +3,7 @@ let albums = JSON.parse(localStorage.getItem('pennyAlbums')) || [];
 let currentAlbum = null;
 let currentImageData = null;
 let currentAnalysis = null;
+let isSharedView = false; // Track if we're viewing a shared album
 
 // DOM elements
 const uploadArea = document.getElementById('uploadArea');
@@ -24,6 +25,7 @@ const emptyAlbumsState = document.getElementById('emptyAlbumsState');
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
     initializeEventListeners();
+    checkForSharedAlbum();
     renderAlbums();
     showEmptyAlbumsStateIfNeeded();
 });
@@ -53,6 +55,119 @@ function initializeEventListeners() {
             openEditModal();
         }
     });
+}
+
+// URL Sharing Functions
+function checkForSharedAlbum() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const sharedAlbumId = urlParams.get('share');
+    
+    if (sharedAlbumId) {
+        // Find the shared album in localStorage or create a temporary one
+        const sharedAlbum = albums.find(album => album.id === sharedAlbumId);
+        if (sharedAlbum) {
+            isSharedView = true;
+            openAlbumView(sharedAlbumId);
+        } else {
+            // If album not found, show error message
+            showNotification('Shared album not found or has been deleted', 'error');
+        }
+    }
+}
+
+function generateShareUrl(albumId) {
+    const baseUrl = window.location.origin + window.location.pathname;
+    return `${baseUrl}?share=${albumId}`;
+}
+
+function copyShareUrl(albumId) {
+    const shareUrl = generateShareUrl(albumId);
+    navigator.clipboard.writeText(shareUrl).then(() => {
+        showNotification('Share link copied to clipboard!', 'success');
+    }).catch(() => {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = shareUrl;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        showNotification('Share link copied to clipboard!', 'success');
+    });
+}
+
+function openShareModal(albumId) {
+    const album = albums.find(a => a.id === albumId);
+    if (!album) return;
+    
+    const shareUrl = generateShareUrl(albumId);
+    
+    // Create share modal content
+    const shareModal = document.createElement('div');
+    shareModal.className = 'modal';
+    shareModal.id = 'shareModal';
+    shareModal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Share Album: ${album.name}</h3>
+                <button class="close-btn" onclick="closeShareModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>Share this link with others to let them view your album:</p>
+                <div class="share-url-container">
+                    <input type="text" id="shareUrlInput" value="${shareUrl}" readonly>
+                    <button class="copy-btn" onclick="copyShareUrlFromModal()">
+                        <i class="fas fa-copy"></i> Copy
+                    </button>
+                </div>
+                <div class="share-options">
+                    <button class="share-btn" onclick="shareViaEmail('${album.name}', '${shareUrl}')">
+                        <i class="fas fa-envelope"></i> Share via Email
+                    </button>
+                    <button class="share-btn" onclick="shareViaWhatsApp('${album.name}', '${shareUrl}')">
+                        <i class="fab fa-whatsapp"></i> Share via WhatsApp
+                    </button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="cancel-btn" onclick="closeShareModal()">Close</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(shareModal);
+    shareModal.style.display = 'block';
+    
+    // Auto-select the URL for easy copying
+    document.getElementById('shareUrlInput').select();
+}
+
+function closeShareModal() {
+    const shareModal = document.getElementById('shareModal');
+    if (shareModal) {
+        shareModal.style.display = 'none';
+        document.body.removeChild(shareModal);
+    }
+}
+
+function copyShareUrlFromModal() {
+    const shareUrlInput = document.getElementById('shareUrlInput');
+    shareUrlInput.select();
+    document.execCommand('copy');
+    showNotification('Share link copied to clipboard!', 'success');
+}
+
+function shareViaEmail(albumName, shareUrl) {
+    const subject = encodeURIComponent(`Check out my penny collection: ${albumName}`);
+    const body = encodeURIComponent(`I wanted to share my penny collection album with you!\n\nAlbum: ${albumName}\n\nView it here: ${shareUrl}`);
+    window.open(`mailto:?subject=${subject}&body=${body}`);
+}
+
+function shareViaWhatsApp(albumName, shareUrl) {
+    const text = encodeURIComponent(`Check out my penny collection: ${albumName}\n\n${shareUrl}`);
+    window.open(`https://wa.me/?text=${text}`);
 }
 
 // File upload handling
@@ -320,6 +435,7 @@ document.addEventListener('keydown', function(event) {
         closeEditAlbumModal();
         closeAddPennyModal();
         closePennyViewModal();
+        closeShareModal();
     }
 });
 
@@ -400,7 +516,10 @@ function renderAlbums() {
                 </div>
                 ${album.location ? `<div class="album-location"><i class="fas fa-map-marker-alt"></i> ${album.location}</div>` : ''}
                 <div class="album-actions">
-                    <button class="album-action-btn delete-btn" onclick="event.stopPropagation(); deleteAlbum('${album.id}')">
+                    <button class="album-action-btn share-btn" onclick="event.stopPropagation(); openShareModal('${album.id}')" title="Share Album">
+                        <i class="fas fa-share-alt"></i>
+                    </button>
+                    <button class="album-action-btn delete-btn" onclick="event.stopPropagation(); deleteAlbum('${album.id}')" title="Delete Album">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
@@ -437,6 +556,34 @@ function openAlbumView(albumId) {
         </div>
     `;
     
+    // Update header buttons based on view mode
+    const addPennyBtn = document.querySelector('.add-penny-btn');
+    const editAlbumBtn = document.querySelector('.edit-album-btn');
+    const shareAlbumBtn = document.querySelector('.share-album-btn');
+    
+    if (isSharedView) {
+        // Hide edit/add buttons in shared view
+        if (addPennyBtn) addPennyBtn.style.display = 'none';
+        if (editAlbumBtn) editAlbumBtn.style.display = 'none';
+        
+        // Add share button if it doesn't exist
+        if (!shareAlbumBtn) {
+            const albumViewTitle = document.querySelector('.album-view-title');
+            const shareBtn = document.createElement('button');
+            shareBtn.className = 'share-album-btn';
+            shareBtn.innerHTML = '<i class="fas fa-share-alt"></i> Share Album';
+            shareBtn.onclick = () => openShareModal(albumId);
+            albumViewTitle.appendChild(shareBtn);
+        }
+    } else {
+        // Show edit/add buttons in normal view
+        if (addPennyBtn) addPennyBtn.style.display = 'flex';
+        if (editAlbumBtn) editAlbumBtn.style.display = 'flex';
+        
+        // Remove share button if it exists
+        if (shareAlbumBtn) shareAlbumBtn.remove();
+    }
+    
     renderAlbumPennies();
     document.getElementById('albumViewScreen').style.display = 'block';
 }
@@ -444,7 +591,14 @@ function openAlbumView(albumId) {
 function closeAlbumView() {
     document.getElementById('albumViewScreen').style.display = 'none';
     currentAlbum = null;
+    isSharedView = false;
     resetUpload();
+    
+    // Clear the URL parameters when closing shared view
+    if (window.location.search.includes('share=')) {
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+    }
 }
 
 function renderAlbumPennies() {
@@ -698,6 +852,9 @@ window.addEventListener('click', function(event) {
     }
     if (event.target === pennyViewModal) {
         closePennyViewModal();
+    }
+    if (event.target.id === 'shareModal') {
+        closeShareModal();
     }
 });
 
