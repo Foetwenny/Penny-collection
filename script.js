@@ -206,12 +206,46 @@ function handleDragLeave(event) {
 function processImageFile(file) {
     const reader = new FileReader();
     reader.onload = function(e) {
-        currentImageData = e.target.result;
-        previewImage.src = currentImageData;
-        uploadPreview.style.display = 'block';
-        uploadArea.style.display = 'none';
+        // Compress the image before storing
+        compressImage(e.target.result, 800, 600, 0.7).then(compressedData => {
+            currentImageData = compressedData;
+            previewImage.src = compressedData;
+            uploadPreview.style.display = 'block';
+            uploadArea.style.display = 'none';
+        });
     };
     reader.readAsDataURL(file);
+}
+
+// Image compression function
+function compressImage(base64, maxWidth, maxHeight, quality) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = function() {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Calculate new dimensions
+            let { width, height } = img;
+            if (width > maxWidth) {
+                height = (height * maxWidth) / width;
+                width = maxWidth;
+            }
+            if (height > maxHeight) {
+                width = (width * maxHeight) / height;
+                height = maxHeight;
+            }
+            
+            canvas.width = width;
+            canvas.height = height;
+            
+            // Draw and compress
+            ctx.drawImage(img, 0, 0, width, height);
+            const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+            resolve(compressedBase64);
+        };
+        img.src = base64;
+    });
 }
 
 function resetUpload() {
@@ -224,83 +258,262 @@ function resetUpload() {
     const modalAnalysisSection = addPennyModal.querySelector('#analysisSection');
     if (modalAnalysisSection) modalAnalysisSection.style.display = 'none';
     
+    // Reset the location input field
+    const locationInput = addPennyModal.querySelector('#locationResult');
+    if (locationInput) {
+        locationInput.value = '';
+        console.log('Reset location input field');
+    }
+    
     // Also reset the global analysis section (for backward compatibility)
     if (analysisSection) analysisSection.style.display = 'none';
     
     imageInput.value = '';
 }
 
-// AI Analysis simulation
+// Check if Google AI is configured
+function isGoogleAIConfigured() {
+    return window.GOOGLE_AI_CONFIG && window.GOOGLE_AI_CONFIG.apiKey;
+}
+
+// Real AI Analysis with Gemini API
 async function analyzeImage() {
     if (!currentImageData) return;
+
+    // Check if API key is configured
+    if (!isGoogleAIConfigured()) {
+        showNotification('Google AI API key not configured.', 'error');
+        return;
+    }
 
     // Show loading state
     analyzeBtn.innerHTML = '<div class="loading"></div> Analyzing...';
     analyzeBtn.disabled = true;
 
-    // Simulate AI analysis delay
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    try {
+        // Convert base64 image to blob for API
+        const base64Data = currentImageData.split(',')[1];
+        
+        // Create the prompt for penny analysis - using the simple, natural approach
+        const prompt = `Give me an interesting paragraph-size description of this elongated penny. Start with the specific location or landmark featured on it, then provide a rich, detailed description of what you see, including any text, imagery, historical context, and significance. Write in a natural, engaging style like you're telling a story about this unique souvenir.`;
 
-    // Simulate AI analysis results
-    const analysisResults = simulateAIAnalysis();
-    currentAnalysis = analysisResults;
+        // Call Gemini API directly
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${window.GOOGLE_AI_CONFIG.apiKey}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                contents: [{
+                    parts: [
+                        { text: prompt },
+                        {
+                            inline_data: {
+                                mime_type: "image/jpeg",
+                                data: base64Data
+                            }
+                        }
+                    ]
+                }]
+            })
+        });
 
-    // Display results in the add penny modal
-    const modalAnalysisSection = addPennyModal.querySelector('#analysisSection');
-    const modalLocationResult = addPennyModal.querySelector('#locationResult');
-    const modalDescriptionResult = addPennyModal.querySelector('#descriptionResult');
-    const modalDateResult = addPennyModal.querySelector('#dateResult');
+        if (!response.ok) {
+            throw new Error(`API call failed: ${response.status} ${response.statusText}`);
+        }
 
-    if (modalLocationResult) modalLocationResult.textContent = analysisResults.location;
-    if (modalDescriptionResult) modalDescriptionResult.textContent = analysisResults.description;
-    if (modalDateResult) modalDateResult.textContent = analysisResults.date;
+        const result = await response.json();
+        const text = result.candidates[0].content.parts[0].text;
+        
+        // Debug: Log the AI response
+        console.log('AI Response:', text);
+        
+        // Display results in the add penny modal
+        const modalAnalysisSection = addPennyModal.querySelector('#analysisSection');
+        const modalLocationResult = addPennyModal.querySelector('#locationResult');
+        const modalDescriptionResult = addPennyModal.querySelector('#descriptionResult');
+        const modalDateResult = addPennyModal.querySelector('#dateResult');
+        
+        console.log('Modal elements found:');
+        console.log('Analysis section:', modalAnalysisSection);
+        console.log('Location input:', modalLocationResult);
+        console.log('Description field:', modalDescriptionResult);
+        console.log('Date field:', modalDateResult);
 
-    // Show analysis section in the modal
-    if (modalAnalysisSection) modalAnalysisSection.style.display = 'block';
+        // Improved location extraction
+        let location = 'Unknown Location';
+        
+        // Look for common location indicators in the first few lines
+        const lines = text.split('\n').slice(0, 3); // Check first 3 lines
+        console.log('First 3 lines:', lines);
+        
+        for (const line of lines) {
+            const trimmedLine = line.trim();
+            console.log('Processing line:', trimmedLine);
+            
+            // Look for lines that contain location-like information
+            if (trimmedLine.includes('at ') || trimmedLine.includes('from ') || 
+                trimmedLine.includes('in ') || trimmedLine.includes('of ')) {
+                
+                console.log('Found location indicator in line:', trimmedLine);
+                
+                // Extract the location part
+                let locationText = trimmedLine;
+                
+                // Remove common prefixes
+                locationText = locationText.replace(/^(This elongated penny features?|This appears to be|This pressed penny|This elongated penny|This penny|This is)/i, '').trim();
+                locationText = locationText.replace(/^(at|from|in|of)\s+/i, '').trim();
+                
+                // Take the first part before a comma or period
+                locationText = locationText.split(/[,\.]/)[0].trim();
+                
+                console.log('Extracted location:', locationText);
+                
+                if (locationText.length > 5 && locationText.length < 100) {
+                    location = locationText;
+                    console.log('Final location set to:', location);
+                    break;
+                }
+            }
+        }
+        
+        // If we still don't have a good location, try to extract from the first sentence
+        if (location === 'Unknown Location') {
+            console.log('Trying fallback location extraction...');
+            const firstSentence = text.split(/[.!?]/)[0];
+            console.log('First sentence:', firstSentence);
+            
+            if (firstSentence.includes('at ') || firstSentence.includes('from ')) {
+                const match = firstSentence.match(/(?:at|from)\s+([^,\.]+)/i);
+                if (match && match[1]) {
+                    location = match[1].trim();
+                    console.log('Fallback location extracted:', location);
+                }
+            }
+        }
+        
+        // Additional location extraction patterns
+        if (location === 'Unknown Location') {
+            console.log('Trying additional location patterns...');
+            
+            // Look for common location patterns
+            const locationPatterns = [
+                /(?:features?|shows?|displays?|represents?)\s+([^,\.]+)/i,
+                /(?:from|at|in)\s+([^,\.]+)/i,
+                /(?:commemorates?|celebrates?)\s+([^,\.]+)/i
+            ];
+            
+            for (const pattern of locationPatterns) {
+                const match = text.match(pattern);
+                if (match && match[1]) {
+                    const potentialLocation = match[1].trim();
+                    if (potentialLocation.length > 5 && potentialLocation.length < 100) {
+                        location = potentialLocation;
+                        console.log('Location found with pattern:', location);
+                        break;
+                    }
+                }
+            }
+        }
+        
+        console.log('Final location result:', location);
 
-    // Reset button state
-    analyzeBtn.innerHTML = '<i class="fas fa-magic"></i> Analyze with AI';
-    analyzeBtn.disabled = false;
+        // Create a comprehensive description from the AI response
+        let comprehensiveDescription = '';
+        
+        // For the new natural prompt, we want to preserve most of the response
+        // Just remove the first sentence if it's clearly just a location
+        const sentences = text.split(/[.!?]/).filter(s => s.trim().length > 10);
+        
+        if (sentences.length > 1) {
+            // Check if first sentence is just a location (short and location-like)
+            const firstSentence = sentences[0].trim();
+            if (firstSentence.length < 50 && (firstSentence.includes('at ') || firstSentence.includes('in ') || firstSentence.includes('of '))) {
+                // Skip the first sentence if it's just a short location
+                const descriptionSentences = sentences.slice(1);
+                comprehensiveDescription = descriptionSentences.join('. ').trim() + '.';
+            } else {
+                // Keep everything if the first sentence is substantial
+                comprehensiveDescription = sentences.join('. ').trim() + '.';
+            }
+        } else if (sentences.length === 1) {
+            // If only one sentence, use it all
+            comprehensiveDescription = sentences[0].trim() + '.';
+        }
+        
+        // If we still don't have a good description, create a simple one
+        if (!comprehensiveDescription || comprehensiveDescription.length < 10) {
+            comprehensiveDescription = `Elongated penny featuring ${location}`;
+        }
+        
+        // Keep the full description - no character limits
+        // The description field will handle overflow properly
 
-    // Scroll to analysis results in the modal
-    if (modalAnalysisSection) {
-        modalAnalysisSection.scrollIntoView({ behavior: 'smooth' });
+                // Update currentAnalysis with user input fields
+        currentAnalysis = {
+            location: '', // Will be filled by user
+            description: comprehensiveDescription, // Use the comprehensive description
+            date: 'Date from AI analysis',
+            fullResponse: text // Keep the full response for reference
+        };
+        
+        // Debug: Verify the description is properly set
+        console.log('=== CURRENT ANALYSIS OBJECT CREATED ===');
+        console.log('Description length:', currentAnalysis.description ? currentAnalysis.description.length : 'undefined');
+        console.log('Description preview:', currentAnalysis.description ? currentAnalysis.description.substring(0, 100) + '...' : 'undefined');
+        console.log('=====================================');
+        
+        // Debug: Log what's being saved
+        console.log('=== FINAL ANALYSIS RESULTS ===');
+        console.log('Location: (user will input)');
+        console.log('Description:', comprehensiveDescription);
+        console.log('Full currentAnalysis object:', currentAnalysis);
+        console.log('================================');
+        
+        // Now display the extracted values in the modal
+        if (modalLocationResult) modalLocationResult.value = 'Enter location here';
+        if (modalDescriptionResult) {
+            modalDescriptionResult.textContent = comprehensiveDescription;
+            console.log('Setting description in modal:', comprehensiveDescription);
+            console.log('Description length:', comprehensiveDescription.length);
+        }
+        if (modalDateResult) modalDateResult.textContent = 'Date from AI analysis';
+
+        // Show analysis section in the modal
+        if (modalAnalysisSection) modalAnalysisSection.style.display = 'block';
+
+        // Show success notification
+        showNotification('AI analysis completed successfully!', 'success');
+
+    } catch (error) {
+        console.error('AI analysis failed:', error);
+        
+        // Show specific error messages for common issues
+        let errorMessage = 'AI analysis failed. Please try again.';
+        if (error.message.includes('API_KEY_INVALID')) {
+            errorMessage = 'Invalid API key. Please check your Google AI configuration.';
+        } else if (error.message.includes('QUOTA_EXCEEDED')) {
+            errorMessage = 'API quota exceeded. Please try again later.';
+        } else if (error.message.includes('INVALID_ARGUMENT')) {
+            errorMessage = 'Invalid image format. Please try a different image.';
+        } else if (error.message.includes('API call failed: 400')) {
+            errorMessage = 'Invalid request. Please check your image format.';
+        } else if (error.message.includes('API call failed: 403')) {
+            errorMessage = 'Access denied. Please check your API key.';
+        }
+        
+        showNotification(errorMessage, 'error');
+        
+        // Fallback to manual input
+        showNotification('You can still add the penny manually.', 'info');
+    } finally {
+        // Reset button state
+        analyzeBtn.innerHTML = '<i class="fas fa-magic"></i> Analyze with AI';
+        analyzeBtn.disabled = false;
     }
 }
 
-function simulateAIAnalysis() {
-    // Simulate different types of elongated pennies
-    const pennyTypes = [
-        {
-            location: "Disneyland, Anaheim, CA",
-            description: "This appears to be a classic Disneyland pressed penny featuring Mickey Mouse. The design shows Mickey in his iconic pose, likely from the 1980s-1990s era. These pennies were popular souvenirs from the penny press machines located throughout the park.",
-            date: "1985-1995 (estimated)"
-        },
-        {
-            location: "Yellowstone National Park, WY",
-            description: "This elongated penny features a bison design, representing the iconic wildlife of Yellowstone National Park. The pressed penny likely comes from one of the visitor centers or gift shops within the park, showcasing the park's natural heritage.",
-            date: "1990-2010 (estimated)"
-        },
-        {
-            location: "Times Square, New York, NY",
-            description: "This pressed penny displays the famous Times Square skyline with the iconic billboards and neon lights. It's a popular tourist souvenir from the heart of Manhattan, capturing the essence of the city that never sleeps.",
-            date: "2000-2020 (estimated)"
-        },
-        {
-            location: "San Francisco Cable Car, CA",
-            description: "This elongated penny features a San Francisco cable car design, representing the historic transportation system that's been operating since 1873. The penny likely comes from a souvenir shop near the cable car routes or Fisherman's Wharf.",
-            date: "1995-2015 (estimated)"
-        },
-        {
-            location: "Mount Rushmore, Keystone, SD",
-            description: "This pressed penny showcases the famous Mount Rushmore National Memorial with the four presidential faces carved into the granite. It's a classic souvenir from one of America's most iconic landmarks.",
-            date: "1980-2000 (estimated)"
-        }
-    ];
 
-    // Randomly select a penny type for simulation
-    return pennyTypes[Math.floor(Math.random() * pennyTypes.length)];
-}
 
 // Collection management
 function saveToCollection() {
@@ -742,15 +955,32 @@ function deleteAlbum(albumId) {
 }
 
 function saveToAlbum() {
+    console.log('saveToAlbum function called');
+    console.log('currentAlbum:', currentAlbum);
+    console.log('currentImageData:', currentImageData ? 'exists' : 'missing');
+    console.log('currentAnalysis:', currentAnalysis);
+    
     if (!currentAlbum || !currentImageData || !currentAnalysis) {
+        console.log('Missing required data, showing error');
         showNotification('Please complete the analysis first', 'error');
         return;
     }
     
+    console.log('Creating penny object...');
+    
+    // Get location from user input field in the add penny modal
+    const userLocation = addPennyModal.querySelector('#locationResult').value;
+    const finalLocation = userLocation === 'Enter location here' || userLocation.trim() === '' ? 'Unknown Location' : userLocation.trim();
+    
+    console.log('User location input:', userLocation);
+    console.log('Final location:', finalLocation);
+    console.log('Description being saved:', currentAnalysis.description);
+    console.log('Description length:', currentAnalysis.description ? currentAnalysis.description.length : 'undefined');
+    
     const penny = {
         id: Date.now().toString(),
-        name: currentAnalysis.location || 'Unknown Location',
-        location: currentAnalysis.location || 'Unknown',
+        name: finalLocation,
+        location: finalLocation,
         description: currentAnalysis.description || 'No description',
         dateCollected: currentAnalysis.date || new Date().toISOString().split('T')[0],
         notes: '',
@@ -759,15 +989,21 @@ function saveToAlbum() {
         addedAt: new Date().toISOString()
     };
     
+    console.log('Adding penny to album...');
     currentAlbum.pennies.push(penny);
     currentAlbum.updatedAt = new Date().toISOString();
     
+    console.log('Saving to storage...');
     saveAlbumsToStorage();
+    console.log('Rendering albums...');
     renderAlbums(); // Update the main album cards
     renderAlbumPennies(); // Update the pennies display in the album view
+    console.log('Resetting upload...');
     resetUpload();
+    console.log('Closing modal...');
     closeAddPennyModal();
     
+    console.log('Showing success notification...');
     showNotification('Penny added to album successfully!', 'success');
 }
 
@@ -824,13 +1060,152 @@ function saveEdit() {
 }
 
 function saveAlbumsToStorage() {
-    localStorage.setItem('pennyAlbums', JSON.stringify(albums));
+    try {
+        // Check storage size before saving
+        const dataToSave = JSON.stringify(albums);
+        const dataSize = new Blob([dataToSave]).size;
+        const maxSize = 4.5 * 1024 * 1024; // 4.5MB limit (leaving buffer)
+        
+        if (dataSize > maxSize) {
+            // Data is too large, compress images further
+            console.warn('Data size too large, compressing images...');
+            const compressedAlbums = albums.map(album => ({
+                ...album,
+                pennies: album.pennies.map(penny => ({
+                    ...penny,
+                    imageData: penny.imageData ? compressImageForStorage(penny.imageData) : null
+                }))
+            }));
+            
+            const compressedData = JSON.stringify(compressedAlbums);
+            localStorage.setItem('pennyAlbums', compressedData);
+            showNotification('Images were compressed to save storage space.', 'info');
+        } else {
+            localStorage.setItem('pennyAlbums', dataToSave);
+        }
+    } catch (error) {
+        if (error.name === 'QuotaExceededError') {
+            console.error('localStorage quota exceeded. Attempting to save essential data...');
+            
+            try {
+                // Save only essential album data without images
+                const essentialAlbums = albums.map(album => ({
+                    id: album.id,
+                    name: album.name,
+                    description: album.description,
+                    tripDate: album.tripDate,
+                    location: album.location,
+                    imageUrl: album.imageUrl,
+                    createdAt: album.createdAt,
+                    updatedAt: album.updatedAt,
+                    pennies: album.pennies.map(penny => ({
+                        id: penny.id,
+                        name: penny.name,
+                        location: penny.location,
+                        description: penny.description,
+                        dateCollected: penny.dateCollected,
+                        notes: penny.notes,
+                        addedAt: penny.addedAt,
+                        imageData: null // Remove images to save space
+                    }))
+                }));
+                
+                localStorage.setItem('pennyAlbums', JSON.stringify(essentialAlbums));
+                showNotification('Storage space was full. Images were removed to save your data.', 'warning');
+            } catch (retryError) {
+                console.error('Failed to save even essential data:', retryError);
+                showNotification('Unable to save data due to storage limitations. Please clear some browser data.', 'error');
+            }
+        } else {
+            console.error('Error saving to localStorage:', error);
+            showNotification('Error saving data to storage.', 'error');
+        }
+    }
+}
+
+// Additional compression for storage
+function compressImageForStorage(base64Data) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = function() {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // More aggressive compression for storage
+            const maxSize = 400;
+            let { width, height } = img;
+            
+            if (width > height) {
+                if (width > maxSize) {
+                    height = (height * maxSize) / width;
+                    width = maxSize;
+                }
+            } else {
+                if (height > maxSize) {
+                    width = (width * maxSize) / height;
+                    height = maxSize;
+                }
+            }
+            
+            canvas.width = width;
+            canvas.height = height;
+            ctx.drawImage(img, 0, 0, width, height);
+            
+            // Lower quality for storage
+            const compressed = canvas.toDataURL('image/jpeg', 0.5);
+            resolve(compressed);
+        };
+        img.src = base64Data;
+    });
 }
 
 function showEmptyAlbumsStateIfNeeded() {
     if (albums.length === 0) {
         renderAlbums();
     }
+}
+
+// Export/Backup function to prevent data loss
+function exportAlbums() {
+    const dataStr = JSON.stringify(albums, null, 2);
+    const dataBlob = new Blob([dataStr], {type: 'application/json'});
+    const url = URL.createObjectURL(dataBlob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `penny-collection-backup-${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+    
+    URL.revokeObjectURL(url);
+    showNotification('Album backup exported successfully!', 'success');
+}
+
+// Import function to restore data
+function importAlbums() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    
+    input.onchange = function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedAlbums = JSON.parse(e.target.result);
+                    albums = importedAlbums;
+                    saveAlbumsToStorage();
+                    renderAlbums();
+                    showNotification('Albums imported successfully!', 'success');
+                } catch (error) {
+                    showNotification('Invalid backup file. Please try again.', 'error');
+                }
+            };
+            reader.readAsText(file);
+        }
+    };
+    
+    input.click();
 }
 
 // Close modals when clicking outside

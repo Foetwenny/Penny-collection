@@ -2,6 +2,32 @@
 
 A beautiful, modern web application for organizing and displaying your elongated penny collection with AI-powered research capabilities.
 
+## 🔐 Configuration Setup
+
+To use the AI penny analysis feature, you need to set up your Google AI credentials:
+
+1. Copy `config.template.js` to `config.js`
+2. Edit `config.js` and add your actual API key and project ID
+3. **Never commit `config.js` to GitHub** (it's already in `.gitignore`)
+
+## 🚀 Features
+
+- **AI-Powered Penny Analysis**: Uses Google Gemini 2.5 Flash for intelligent penny identification
+- **Album Management**: Organize pennies into themed collections
+- **Image Compression**: Smart storage management to prevent quota issues
+- **Backup & Restore**: Export/import your collection data
+- **Responsive Design**: Works on desktop and mobile devices
+
+## 📁 File Structure
+
+- `index.html` - Main application
+- `script.js` - Application logic and AI integration
+- `styles.css` - Main styling
+- `album-styles.css` - Album-specific styles
+- `config.js` - **Your API credentials (DO NOT COMMIT)**
+- `config.template.js` - Template for setting up credentials
+- `.gitignore` - Prevents sensitive files from being committed
+
 ## Features
 
 ### 🖼️ Image Upload
@@ -136,3 +162,4 @@ This project is open source and available under the MIT License. Feel free to mo
 ---
 
 **Enjoy organizing your elongated penny collection!** 🪙✨
+

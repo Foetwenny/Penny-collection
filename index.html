@@ -8,6 +8,35 @@
     <link rel="stylesheet" href="album-styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Google AI Configuration -->
+    <script>
+        // Google AI Configuration - Load from config file
+        window.GOOGLE_AI_CONFIG = {
+            apiKey: '',
+            projectId: ''
+        };
+        
+        // Load configuration from external file
+        fetch('./config.js')
+            .then(response => response.text())
+            .then(configText => {
+                // Extract API key and project ID from config
+                const apiKeyMatch = configText.match(/apiKey:\s*['"]([^'"]+)['"]/);
+                const projectIdMatch = configText.match(/projectId:\s*['"]([^'"]+)['"]/);
+                
+                if (apiKeyMatch) window.GOOGLE_AI_CONFIG.apiKey = apiKeyMatch[1];
+                if (projectIdMatch) window.GOOGLE_AI_CONFIG.projectId = projectIdMatch[1];
+                
+                if (!window.GOOGLE_AI_CONFIG.apiKey) {
+                    console.warn('API key not found. Please check your config.js file.');
+                }
+            })
+            .catch(error => {
+                console.error('Failed to load configuration:', error);
+                console.warn('Please create a config.js file with your API credentials.');
+            });
+    </script>
 </head>
 <body>
     <div class="container">
@@ -15,6 +44,14 @@
             <div class="header-content">
                 <h1><i class="fas fa-coins"></i> Traveler's Penny Log <i class="fas fa-globe"></i></h1>
                 <p>Organize and display your pressed penny treasures</p>
+                <div class="header-actions">
+                    <button class="backup-btn" onclick="exportAlbums()" title="Export Backup">
+                        <i class="fas fa-download"></i> Backup
+                    </button>
+                    <button class="restore-btn" onclick="importAlbums()" title="Import Backup">
+                        <i class="fas fa-upload"></i> Restore
+                    </button>
+                </div>
             </div>
         </header>
 
@@ -111,7 +148,7 @@
                             <div class="analysis-content">
                                 <div class="analysis-item">
                                     <label>Location:</label>
-                                    <span id="locationResult">Analyzing...</span>
+                                    <input type="text" id="locationResult" placeholder="Enter location here" class="analysis-input">
                                 </div>
                                 <div class="analysis-item">
                                     <label>Description:</label>
@@ -265,11 +302,11 @@
                                 <div class="analysis-content">
                                     <div class="analysis-item">
                                         <label>Location:</label>
-                                        <span id="locationResult">Analyzing...</span>
+                                        <input type="text" id="locationResult" placeholder="Enter location here" class="analysis-input">
                                     </div>
                                     <div class="analysis-item">
                                         <label>Description:</label>
-                                        <p id="descriptionResult">Analyzing...</p>
+                                        <p id="descriptionResult" class="description-text">Analyzing...</p>
                                     </div>
                                     <div class="analysis-item">
                                         <label>Estimated Date:</label>
@@ -321,6 +358,7 @@
 
 
 
+    <script src="config.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
