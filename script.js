@@ -16,6 +16,8 @@ const createAlbumBtn = document.getElementById('createAlbumBtn');
 const createAlbumModal = document.getElementById('createAlbumModal');
 const albumViewModal = document.getElementById('albumViewModal');
 const editAlbumModal = document.getElementById('editAlbumModal');
+const addPennyModal = document.getElementById('addPennyModal');
+const pennyViewModal = document.getElementById('pennyViewModal');
 const editModal = document.getElementById('editModal');
 const emptyAlbumsState = document.getElementById('emptyAlbumsState');
 
@@ -42,9 +44,15 @@ function initializeEventListeners() {
     // Album events
     createAlbumBtn.addEventListener('click', openCreateAlbumModal);
 
-    // Save and edit events
-    document.getElementById('saveBtn').addEventListener('click', saveToAlbum);
-    document.getElementById('editBtn').addEventListener('click', openEditModal);
+    // Use event delegation for modal buttons
+    document.addEventListener('click', function(event) {
+        if (event.target && event.target.id === 'saveBtn') {
+            saveToAlbum();
+        }
+        if (event.target && event.target.id === 'editBtn') {
+            openEditModal();
+        }
+    });
 }
 
 // File upload handling
@@ -96,7 +104,14 @@ function resetUpload() {
     currentAnalysis = null;
     uploadPreview.style.display = 'none';
     uploadArea.style.display = 'block';
-    analysisSection.style.display = 'none';
+    
+    // Reset analysis section in the modal
+    const modalAnalysisSection = addPennyModal.querySelector('#analysisSection');
+    if (modalAnalysisSection) modalAnalysisSection.style.display = 'none';
+    
+    // Also reset the global analysis section (for backward compatibility)
+    if (analysisSection) analysisSection.style.display = 'none';
+    
     imageInput.value = '';
 }
 
@@ -115,20 +130,27 @@ async function analyzeImage() {
     const analysisResults = simulateAIAnalysis();
     currentAnalysis = analysisResults;
 
-    // Display results
-    document.getElementById('locationResult').textContent = analysisResults.location;
-    document.getElementById('descriptionResult').textContent = analysisResults.description;
-    document.getElementById('dateResult').textContent = analysisResults.date;
+    // Display results in the add penny modal
+    const modalAnalysisSection = addPennyModal.querySelector('#analysisSection');
+    const modalLocationResult = addPennyModal.querySelector('#locationResult');
+    const modalDescriptionResult = addPennyModal.querySelector('#descriptionResult');
+    const modalDateResult = addPennyModal.querySelector('#dateResult');
 
-    // Show analysis section
-    analysisSection.style.display = 'block';
+    if (modalLocationResult) modalLocationResult.textContent = analysisResults.location;
+    if (modalDescriptionResult) modalDescriptionResult.textContent = analysisResults.description;
+    if (modalDateResult) modalDateResult.textContent = analysisResults.date;
+
+    // Show analysis section in the modal
+    if (modalAnalysisSection) modalAnalysisSection.style.display = 'block';
 
     // Reset button state
     analyzeBtn.innerHTML = '<i class="fas fa-magic"></i> Analyze with AI';
     analyzeBtn.disabled = false;
 
-    // Scroll to analysis results
-    analysisSection.scrollIntoView({ behavior: 'smooth' });
+    // Scroll to analysis results in the modal
+    if (modalAnalysisSection) {
+        modalAnalysisSection.scrollIntoView({ behavior: 'smooth' });
+    }
 }
 
 function simulateAIAnalysis() {
@@ -294,8 +316,10 @@ document.addEventListener('keydown', function(event) {
     if (event.key === 'Escape') {
         closeModal();
         closeCreateAlbumModal();
-        closeAlbumViewModal();
+        closeAlbumView();
         closeEditAlbumModal();
+        closeAddPennyModal();
+        closePennyViewModal();
     }
 });
 
@@ -319,7 +343,8 @@ function closeCreateAlbumModal() {
 function createAlbum() {
     const name = document.getElementById('albumName').value.trim();
     const description = document.getElementById('albumDescription').value.trim();
-    const category = document.getElementById('albumCategory').value;
+    const tripDate = document.getElementById('albumTripDate').value;
+    const location = document.getElementById('albumLocation').value.trim();
     const imageUrl = (document.getElementById('albumImageUrl')?.value || '').trim();
     
     if (!name) {
@@ -331,7 +356,8 @@ function createAlbum() {
         id: Date.now().toString(),
         name: name,
         description: description,
-        category: category,
+        tripDate: tripDate,
+        location: location,
         imageUrl: imageUrl,
         pennies: [],
         createdAt: new Date().toISOString(),
@@ -364,15 +390,15 @@ function renderAlbums() {
             <div class="album-content">
                 <div class="album-header">
                     <h3 class="album-title">${album.name}</h3>
-                    <span class="album-category">${getCategoryDisplayName(album.category)}</span>
                 </div>
                 <p class="album-description">${album.description || 'No description'}</p>
                 <div class="album-stats">
+                    <span class="album-date">${album.tripDate ? `Trip: ${new Date(album.tripDate).toLocaleDateString()}` : 'No trip date set'}</span>
                     <span class="penny-count">
                         <i class="fas fa-coins"></i> ${album.pennies.length} ${album.pennies.length === 1 ? 'penny' : 'pennies'}
                     </span>
-                    <span class="album-date">Created ${new Date(album.createdAt).toLocaleDateString()}</span>
                 </div>
+                ${album.location ? `<div class="album-location"><i class="fas fa-map-marker-alt"></i> ${album.location}</div>` : ''}
                 <div class="album-actions">
                     <button class="album-action-btn delete-btn" onclick="event.stopPropagation(); deleteAlbum('${album.id}')">
                         <i class="fas fa-trash"></i>
@@ -383,19 +409,6 @@ function renderAlbums() {
     }).join('');
 }
 
-function getCategoryDisplayName(category) {
-    const categories = {
-        'theme-park': 'Theme Parks',
-        'national-park': 'National Parks',
-        'city-landmark': 'City Landmarks',
-        'natural-landmark': 'Natural Landmark',
-        'museum': 'Museums',
-        'zoo-aquarium': 'Zoos & Aquariums',
-        'other': 'Other'
-    };
-    return categories[category] || category;
-}
-
 function openAlbumView(albumId) {
     currentAlbum = albums.find(album => album.id === albumId);
     if (!currentAlbum) return;
@@ -403,21 +416,33 @@ function openAlbumView(albumId) {
     document.getElementById('albumViewTitle').textContent = currentAlbum.name;
     
     // Update album info
+    const hasCover = currentAlbum.imageUrl && currentAlbum.imageUrl.length > 0;
+    const coverStyle = hasCover ? ` style="--album-cover-url: url('${currentAlbum.imageUrl.replace(/"/g, '\\"')}')"` : '';
+    
     document.getElementById('albumInfo').innerHTML = `
+        <div class="album-info-hero${hasCover ? ' has-cover' : ''}"${coverStyle}>
+            <div class="album-info-overlay">
+                <div class="album-info-text">
+                    <h2 class="album-hero-title">${currentAlbum.name}</h2>
+                    <div class="album-hero-details">
+                        ${currentAlbum.location ? `<span class="album-hero-location"><i class="fas fa-map-marker-alt"></i> ${currentAlbum.location}</span>` : ''}
+                        ${currentAlbum.tripDate ? `<span class="album-hero-date"><i class="fas fa-calendar"></i> ${new Date(currentAlbum.tripDate).toLocaleDateString()}</span>` : ''}
+                    </div>
+                </div>
+            </div>
+        </div>
         <div class="album-info-content">
-            <p><strong>Category:</strong> ${getCategoryDisplayName(currentAlbum.category)}</p>
             <p><strong>Description:</strong> ${currentAlbum.description || 'No description'}</p>
-            <p><strong>Created:</strong> ${new Date(currentAlbum.createdAt).toLocaleDateString()}</p>
             <p><strong>Pennies:</strong> ${currentAlbum.pennies.length}</p>
         </div>
     `;
     
     renderAlbumPennies();
-    albumViewModal.style.display = 'block';
+    document.getElementById('albumViewScreen').style.display = 'block';
 }
 
-function closeAlbumViewModal() {
-    albumViewModal.style.display = 'none';
+function closeAlbumView() {
+    document.getElementById('albumViewScreen').style.display = 'none';
     currentAlbum = null;
     resetUpload();
 }
@@ -438,11 +463,10 @@ function renderAlbumPennies() {
     
     penniesGrid.innerHTML = currentAlbum.pennies.map(penny => `
         <div class="penny-item" data-penny-id="${penny.id}">
-            <img src="${penny.imageData}" alt="${penny.name}" class="penny-image">
+            <img src="${penny.imageData}" alt="${penny.name}" class="penny-image" onclick="openPennyView('${penny.id}')">
             <div class="penny-info">
                 <h4>${penny.name}</h4>
                 <p class="location">${penny.location}</p>
-                <p class="description">${penny.description}</p>
                 <p class="date">${penny.dateCollected ? new Date(penny.dateCollected).toLocaleDateString() : 'No date'}</p>
             </div>
             <div class="penny-actions">
@@ -463,7 +487,8 @@ function editCurrentAlbum() {
     // Store current album and populate form
     document.getElementById('editAlbumName').value = currentAlbum.name || '';
     document.getElementById('editAlbumDescription').value = currentAlbum.description || '';
-    document.getElementById('editAlbumCategory').value = currentAlbum.category || 'other';
+    document.getElementById('editAlbumTripDate').value = currentAlbum.tripDate || '';
+    document.getElementById('editAlbumLocation').value = currentAlbum.location || '';
     document.getElementById('editAlbumImageUrl').value = currentAlbum.imageUrl || '';
     
     editAlbumModal.dataset.albumId = currentAlbum.id;
@@ -478,7 +503,8 @@ function editAlbum(albumId) {
     currentAlbum = album;
     document.getElementById('editAlbumName').value = album.name || '';
     document.getElementById('editAlbumDescription').value = album.description || '';
-    document.getElementById('editAlbumCategory').value = album.category || 'other';
+    document.getElementById('editAlbumTripDate').value = album.tripDate || '';
+    document.getElementById('editAlbumLocation').value = album.location || '';
     document.getElementById('editAlbumImageUrl').value = album.imageUrl || '';
     
     editAlbumModal.dataset.albumId = album.id;
@@ -490,6 +516,34 @@ function closeEditAlbumModal() {
     editAlbumModal.dataset.albumId = '';
 }
 
+function openAddPennyModal() {
+    addPennyModal.style.display = 'block';
+    resetUpload();
+}
+
+function closeAddPennyModal() {
+    addPennyModal.style.display = 'none';
+    resetUpload();
+}
+
+function openPennyView(pennyId) {
+    const penny = currentAlbum.pennies.find(p => p.id === pennyId);
+    if (!penny) return;
+    
+    document.getElementById('pennyViewTitle').textContent = penny.name;
+    document.getElementById('pennyViewImage').src = penny.imageData;
+    document.getElementById('pennyViewName').textContent = penny.name;
+    document.getElementById('pennyViewLocation').textContent = penny.location;
+    document.getElementById('pennyViewDate').textContent = penny.dateCollected ? new Date(penny.dateCollected).toLocaleDateString() : 'No date';
+    document.getElementById('pennyViewDescription').textContent = penny.description;
+    
+    document.getElementById('pennyViewModal').style.display = 'block';
+}
+
+function closePennyViewModal() {
+    document.getElementById('pennyViewModal').style.display = 'none';
+}
+
 function saveAlbumEdit() {
     const albumId = editAlbumModal.dataset.albumId;
     const album = albums.find(a => a.id === albumId);
@@ -497,10 +551,11 @@ function saveAlbumEdit() {
     
     const name = document.getElementById('editAlbumName').value.trim();
     const description = document.getElementById('editAlbumDescription').value.trim();
-    const category = document.getElementById('editAlbumCategory').value;
+    const tripDate = document.getElementById('editAlbumTripDate').value;
+    const location = document.getElementById('editAlbumLocation').value.trim();
     const imageUrl = (document.getElementById('editAlbumImageUrl').value || '').trim();
     
-    Object.assign(album, { name, description, category, imageUrl });
+    Object.assign(album, { name, description, tripDate, location, imageUrl });
     album.updatedAt = new Date().toISOString();
     saveAlbumsToStorage();
     renderAlbums();
@@ -554,8 +609,10 @@ function saveToAlbum() {
     currentAlbum.updatedAt = new Date().toISOString();
     
     saveAlbumsToStorage();
-    renderAlbumPennies();
+    renderAlbums(); // Update the main album cards
+    renderAlbumPennies(); // Update the pennies display in the album view
     resetUpload();
+    closeAddPennyModal();
     
     showNotification('Penny added to album successfully!', 'success');
 }
@@ -587,7 +644,8 @@ function deletePennyFromAlbum(pennyId) {
         currentAlbum.pennies.splice(index, 1);
         currentAlbum.updatedAt = new Date().toISOString();
         saveAlbumsToStorage();
-        renderAlbumPennies();
+        renderAlbums(); // Update the main album cards
+        renderAlbumPennies(); // Update the pennies display in the album view
         showNotification('Penny deleted successfully!', 'success');
     }
 }
@@ -634,6 +692,12 @@ window.addEventListener('click', function(event) {
     }
     if (event.target === editAlbumModal) {
         closeEditAlbumModal();
+    }
+    if (event.target === addPennyModal) {
+        closeAddPennyModal();
+    }
+    if (event.target === pennyViewModal) {
+        closePennyViewModal();
     }
 });
 

@@ -13,8 +13,8 @@
     <div class="container">
         <header class="header">
             <div class="header-content">
-                <h1><i class="fas fa-coins"></i> Elongated Penny Collection</h1>
-                <p>Organize and discover your pressed penny treasures</p>
+                <h1><i class="fas fa-coins"></i> Traveler's Penny Log <i class="fas fa-globe"></i></h1>
+                <p>Organize and display your pressed penny treasures</p>
             </div>
         </header>
 
@@ -62,16 +62,12 @@
                                 <textarea id="albumDescription" rows="3" placeholder="Describe what this album contains..."></textarea>
                             </div>
                             <div class="form-group">
-                                <label for="albumCategory">Category:</label>
-                                <select id="albumCategory">
-                                    <option value="theme-park">Theme Parks</option>
-                                    <option value="national-park">National Parks</option>
-                                    <option value="city-landmark">City Landmarks</option>
-                                    <option value="natural-landmark">Natural Landmark</option>
-                                    <option value="museum">Museums</option>
-                                    <option value="zoo-aquarium">Zoos & Aquariums</option>
-                                    <option value="other">Other</option>
-                                </select>
+                                <label for="albumTripDate">Trip Date:</label>
+                                <input type="date" id="albumTripDate">
+                            </div>
+                            <div class="form-group">
+                                <label for="albumLocation">Location:</label>
+                                <input type="text" id="albumLocation" placeholder="e.g., Disneyland, Yellowstone National Park">
                             </div>
                             <div class="form-group">
                                 <label for="albumImageUrl">Background Image URL (optional):</label>
@@ -86,86 +82,62 @@
                 </div>
             </div>
         
-            <!-- Album View Modal -->
-            <div class="modal" id="albumViewModal">
-                <div class="modal-content album-view-modal">
-                    <div class="modal-header">
-                        <h3 id="albumViewTitle">Album Name</h3>
-                        <div class="modal-header-actions">
-                            <button class="edit-album-btn" onclick="editCurrentAlbum()">
-                                <i class="fas fa-edit"></i> Edit Album
-                            </button>
-                            <button class="close-btn" onclick="closeAlbumViewModal()">
-                                <i class="fas fa-times"></i>
-                            </button>
+            <!-- Album View (Full Screen) -->
+            <div id="albumViewScreen" class="album-view-screen" style="display: none;">
+                <div class="album-view-header">
+                    <button class="back-btn" onclick="closeAlbumView()">
+                        <i class="fas fa-arrow-left"></i> Back to Albums
+                    </button>
+                    <div class="album-view-title">
+                        <h2 id="albumViewTitle">Album Name</h2>
+                        <button class="add-penny-btn" onclick="openAddPennyModal()">
+                            <i class="fas fa-plus"></i> Add Penny
+                        </button>
+                        <button class="edit-album-btn" onclick="editCurrentAlbum()">
+                            <i class="fas fa-edit"></i> Edit Album
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="album-view-content">
+                    <div class="album-info" id="albumInfo">
+                        <!-- Album info will be displayed here -->
+                    </div>
+
+                    <!-- Analysis Results -->
+                    <div class="analysis-section" id="analysisSection" style="display: none;">
+                        <div class="analysis-card">
+                            <h4><i class="fas fa-brain"></i> AI Analysis Results</h4>
+                            <div class="analysis-content">
+                                <div class="analysis-item">
+                                    <label>Location:</label>
+                                    <span id="locationResult">Analyzing...</span>
+                                </div>
+                                <div class="analysis-item">
+                                    <label>Description:</label>
+                                    <p id="descriptionResult">Analyzing...</p>
+                                </div>
+                                <div class="analysis-item">
+                                    <label>Estimated Date:</label>
+                                    <span id="dateResult">Analyzing...</span>
+                                </div>
+                            </div>
+                            <div class="analysis-actions">
+                                <button class="save-btn" id="saveBtn">
+                                    <i class="fas fa-save"></i> Save to Album
+                                </button>
+                                <button class="edit-btn" id="editBtn">
+                                    <i class="fas fa-edit"></i> Edit Details
+                                </button>
+                            </div>
                         </div>
                     </div>
-                    <div class="modal-body">
-                        <div class="album-info" id="albumInfo">
-                            <!-- Album info will be displayed here -->
-                        </div>
-                        
-                        <!-- Add Penny Section -->
-                        <div class="add-penny-section">
-                            <h4><i class="fas fa-plus-circle"></i> Add New Penny</h4>
-                            <div class="upload-area" id="uploadArea">
-                                <div class="upload-content">
-                                    <i class="fas fa-cloud-upload-alt"></i>
-                                    <p>Drag & drop an image here or click to browse</p>
-                                    <input type="file" id="imageInput" accept="image/*" hidden>
-                                    <button class="upload-btn" onclick="document.getElementById('imageInput').click()">
-                                        Choose Image
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="upload-preview" id="uploadPreview" style="display: none;">
-                                <img id="previewImage" src="" alt="Preview">
-                                <div class="preview-actions">
-                                    <button class="analyze-btn" id="analyzeBtn">
-                                        <i class="fas fa-magic"></i> Analyze with AI
-                                    </button>
-                                    <button class="reset-btn" onclick="resetUpload()">
-                                        <i class="fas fa-times"></i> Reset
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-        
-                        <!-- Analysis Results -->
-                        <div class="analysis-section" id="analysisSection" style="display: none;">
-                            <div class="analysis-card">
-                                <h4><i class="fas fa-brain"></i> AI Analysis Results</h4>
-                                <div class="analysis-content">
-                                    <div class="analysis-item">
-                                        <label>Location:</label>
-                                        <span id="locationResult">Analyzing...</span>
-                                    </div>
-                                    <div class="analysis-item">
-                                        <label>Description:</label>
-                                        <p id="descriptionResult">Analyzing...</p>
-                                    </div>
-                                    <div class="analysis-item">
-                                        <label>Estimated Date:</label>
-                                        <span id="dateResult">Analyzing...</span>
-                                    </div>
-                                </div>
-                                <div class="analysis-actions">
-                                    <button class="save-btn" id="saveBtn">
-                                        <i class="fas fa-save"></i> Save to Album
-                                    </button>
-                                    <button class="edit-btn" id="editBtn">
-                                        <i class="fas fa-edit"></i> Edit Details
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-        
-                        <!-- Pennies in Album -->
-                        <div class="album-pennies">
-                            <h4><i class="fas fa-coins"></i> Pennies in this Album</h4>
-                            <div class="pennies-grid" id="penniesGrid">
-                                <!-- Pennies will be displayed here -->
-                            </div>
+
+                    <!-- Pennies in Album -->
+                    <div class="album-pennies">
+                        <h4><i class="fas fa-coins"></i> Pennies in this Album</h4>
+                        <div class="pennies-grid" id="penniesGrid">
+                            <!-- Pennies will be displayed here -->
                         </div>
                     </div>
                 </div>
@@ -231,16 +203,12 @@
                                 <textarea id="editAlbumDescription" rows="3"></textarea>
                             </div>
                             <div class="form-group">
-                                <label for="editAlbumCategory">Category:</label>
-                                <select id="editAlbumCategory">
-                                    <option value="theme-park">Theme Parks</option>
-                                    <option value="national-park">National Parks</option>
-                                    <option value="city-landmark">City Landmarks</option>
-                                    <option value="natural-landmark">Natural Landmark</option>
-                                    <option value="museum">Museums</option>
-                                    <option value="zoo-aquarium">Zoos & Aquariums</option>
-                                    <option value="other">Other</option>
-                                </select>
+                                <label for="editAlbumTripDate">Trip Date:</label>
+                                <input type="date" id="editAlbumTripDate">
+                            </div>
+                            <div class="form-group">
+                                <label for="editAlbumLocation">Location:</label>
+                                <input type="text" id="editAlbumLocation" placeholder="e.g., Disneyland, Yellowstone National Park">
                             </div>
                             <div class="form-group">
                                 <label for="editAlbumImageUrl">Background Image URL (optional):</label>
@@ -254,6 +222,97 @@
                     <div class="modal-footer">
                         <button class="cancel-btn" onclick="closeEditAlbumModal()">Cancel</button>
                         <button class="save-btn" onclick="saveAlbumEdit()">Save Album</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add Penny Modal -->
+            <div class="modal" id="addPennyModal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Add New Penny</h3>
+                        <button class="close-btn" onclick="closeAddPennyModal()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="upload-area" id="uploadArea">
+                            <div class="upload-content">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <p>Drag & drop an image here or click to browse</p>
+                                <input type="file" id="imageInput" accept="image/*" hidden>
+                                <button class="upload-btn" onclick="document.getElementById('imageInput').click()">
+                                    Choose Image
+                                </button>
+                            </div>
+                        </div>
+                        <div class="upload-preview" id="uploadPreview" style="display: none;">
+                            <img id="previewImage" src="" alt="Preview">
+                            <div class="preview-actions">
+                                <button class="analyze-btn" id="analyzeBtn">
+                                    <i class="fas fa-magic"></i> Analyze with AI
+                                </button>
+                                <button class="reset-btn" onclick="resetUpload()">
+                                    <i class="fas fa-times"></i> Reset
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Analysis Results -->
+                        <div class="analysis-section" id="analysisSection" style="display: none;">
+                            <div class="analysis-card">
+                                <h4><i class="fas fa-brain"></i> AI Analysis Results</h4>
+                                <div class="analysis-content">
+                                    <div class="analysis-item">
+                                        <label>Location:</label>
+                                        <span id="locationResult">Analyzing...</span>
+                                    </div>
+                                    <div class="analysis-item">
+                                        <label>Description:</label>
+                                        <p id="descriptionResult">Analyzing...</p>
+                                    </div>
+                                    <div class="analysis-item">
+                                        <label>Estimated Date:</label>
+                                        <span id="dateResult">Analyzing...</span>
+                                    </div>
+                                </div>
+                                <div class="analysis-actions">
+                                    <button class="save-btn" id="saveBtn">
+                                        <i class="fas fa-save"></i> Save to Album
+                                    </button>
+                                    <button class="edit-btn" id="editBtn">
+                                        <i class="fas fa-edit"></i> Edit Details
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="cancel-btn" onclick="closeAddPennyModal()">Cancel</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Penny View Modal -->
+            <div class="modal" id="pennyViewModal">
+                <div class="modal-content penny-view-content">
+                    <div class="modal-header">
+                        <h3 id="pennyViewTitle">Penny Details</h3>
+                        <button class="close-btn" onclick="closePennyViewModal()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="penny-view-image">
+                            <img id="pennyViewImage" src="" alt="Penny Image">
+                        </div>
+                        <div class="penny-view-info">
+                            <h4 id="pennyViewName"></h4>
+                            <p><strong>Location:</strong> <span id="pennyViewLocation"></span></p>
+                            <p><strong>Date Collected:</strong> <span id="pennyViewDate"></span></p>
+                            <p><strong>Description:</strong></p>
+                            <p id="pennyViewDescription"></p>
+                        </div>
                     </div>
                 </div>
             </div>
