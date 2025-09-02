@@ -66,6 +66,14 @@ document.addEventListener('DOMContentLoaded', function() {
         console.error('menuToggle element not found!');
     }
     console.log('=== Menu event listeners setup completed ===');
+    
+    // Set up user guide navigation event listeners
+    document.querySelectorAll('.guide-nav-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const sectionId = this.getAttribute('data-section');
+            showGuideSection(sectionId);
+        });
+    });
 });
 
 // Dark mode functions
@@ -345,7 +353,7 @@ function renderAlbumsWithSearchHighlights(filteredAlbums) {
         if (matches.categories) matchIndicators.push('<span class="match-indicator cat-match"><i class="fas fa-folder"></i> Categories</span>');
         if (matches.location) matchIndicators.push('<span class="match-indicator loc-match"><i class="fas fa-map-marker-alt"></i> Location</span>');
         if (matches.pennies && matches.pennies.length > 0) {
-            matchIndicators.push(`<span class="match-indicator penny-match"><i class="fas fa-coins"></i> ${matches.pennies.length} Penny${matches.pennies.length === 1 ? '' : 'ies'}</span>`);
+                            matchIndicators.push(`<span class="match-indicator penny-match"><i class="fas fa-coins"></i> ${matches.pennies.length} Match${matches.pennies.length === 1 ? '' : 'es'}</span>`);
         }
         
         return `
@@ -634,6 +642,12 @@ function initializeEventListeners() {
 
     // Analysis events
     analyzeBtn.addEventListener('click', analyzeImage);
+    
+    // Manual entry events
+    const manualEntryBtn = document.getElementById('manualEntryBtn');
+    if (manualEntryBtn) {
+        manualEntryBtn.addEventListener('click', showManualEntryForm);
+    }
 
     // Album events
     createAlbumBtn.addEventListener('click', openCreateAlbumModal);
@@ -851,6 +865,14 @@ function resetUpload() {
     // Reset analysis section in the modal
     const modalAnalysisSection = addPennyModal.querySelector('#analysisSection');
     if (modalAnalysisSection) modalAnalysisSection.style.display = 'none';
+    
+    // Reset manual entry form
+    const manualEntryForm = document.getElementById('manualEntryForm');
+    if (manualEntryForm) manualEntryForm.style.display = 'none';
+    
+    // Hide save button
+    const saveManualPennyBtn = document.getElementById('saveManualPennyBtn');
+    if (saveManualPennyBtn) saveManualPennyBtn.style.display = 'none';
     
     // Reset the location input field
     const locationInput = addPennyModal.querySelector('#locationResult');
@@ -1316,6 +1338,38 @@ function openAlbumView(albumId) {
     currentAlbum = albums.find(album => album.id === albumId);
     if (!currentAlbum) return;
     
+    // Check if we're opening from search results and preserve search context
+    const searchInput = document.getElementById('searchInput');
+    const currentSearchTerm = searchInput ? searchInput.value.trim() : '';
+    
+    // Store search context for this album view
+    // Check if we have an active search term and if this album would match it
+    if (currentSearchTerm) {
+        // Check if this album would match the current search term
+        const albumCategories = currentAlbum.categories || (currentAlbum.category ? [currentAlbum.category] : []);
+        const categoryMatch = albumCategories.some(cat => cat.toLowerCase().includes(currentSearchTerm.toLowerCase()));
+        
+        const hasMatches = 
+            currentAlbum.name.toLowerCase().includes(currentSearchTerm.toLowerCase()) ||
+            (currentAlbum.description && currentAlbum.description.toLowerCase().includes(currentSearchTerm.toLowerCase())) ||
+            categoryMatch ||
+            (currentAlbum.location && currentAlbum.location.toLowerCase().includes(currentSearchTerm.toLowerCase())) ||
+            currentAlbum.pennies.some(penny => 
+                penny.description && penny.description.toLowerCase().includes(currentSearchTerm.toLowerCase())
+            );
+        
+        if (hasMatches) {
+            // We're opening from search results, preserve the search term
+            currentAlbum.currentSearchContext = currentSearchTerm;
+        } else {
+            // Clear any previous search context
+            currentAlbum.currentSearchContext = null;
+        }
+    } else {
+        // Clear any previous search context
+        currentAlbum.currentSearchContext = null;
+    }
+    
     document.getElementById('albumViewTitle').textContent = currentAlbum.name;
     
     // Update album info
@@ -1399,9 +1453,82 @@ function renderAlbumPennies() {
         return;
     }
     
+    // Check if we have search context and reorder pennies accordingly
+    if (currentAlbum.currentSearchContext) {
+        renderAlbumPenniesWithSearchHighlights();
+    } else {
+        // Render pennies in normal order
+        renderAlbumPenniesNormal();
+    }
+}
+
+function renderAlbumPenniesWithSearchHighlights() {
+    const penniesGrid = document.getElementById('penniesGrid');
+    const searchTerm = currentAlbum.currentSearchContext;
+    
+    // Separate matching and non-matching pennies
+    const matchingPennies = [];
+    const nonMatchingPennies = [];
+    
+    currentAlbum.pennies.forEach(penny => {
+        const isMatch = penny.description && penny.description.toLowerCase().includes(searchTerm.toLowerCase());
+        if (isMatch) {
+            matchingPennies.push(penny);
+        } else {
+            nonMatchingPennies.push(penny);
+        }
+    });
+    
+    // Combine arrays: matching pennies first, then non-matching
+    const reorderedPennies = [...matchingPennies, ...nonMatchingPennies];
+    
+    if (reorderedPennies.length === 0) {
+        penniesGrid.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-coins"></i>
+                <h4>No Pennies Found</h4>
+                <p>No pennies matching your search terms in this album.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    penniesGrid.innerHTML = reorderedPennies.map(penny => {
+        const isMatch = penny.description && penny.description.toLowerCase().includes(searchTerm.toLowerCase());
+        
+        // Highlight matching text
+        const highlightedName = highlightSearchTerm(penny.name, searchTerm);
+        const highlightedLocation = highlightSearchTerm(penny.location, searchTerm);
+        
+        // Add search highlight class if this penny matches
+        const searchClass = isMatch ? ' search-match' : '';
+        
+        return `
+        <div class="penny-item${searchClass}" data-penny-id="${penny.id}" data-search-term="${searchTerm}">
+            <img src="${penny.imageData}" alt="${penny.name}" class="penny-image" onclick="openPennyViewFromElement(this.parentElement)">
+            <div class="penny-info">
+                <h4>${highlightedName}</h4>
+                <p class="location">${highlightedLocation}</p>
+                <p class="date">${penny.dateCollected ? new Date(penny.dateCollected).toLocaleDateString() : 'No date'}</p>
+            </div>
+            <div class="penny-actions">
+                <button class="penny-action-btn edit-btn" onclick="editPennyInAlbum('${penny.id}')">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="penny-action-btn delete-btn" onclick="deletePennyFromAlbum('${penny.id}')">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function renderAlbumPenniesNormal() {
+    const penniesGrid = document.getElementById('penniesGrid');
+    
     penniesGrid.innerHTML = currentAlbum.pennies.map(penny => `
-        <div class="penny-item" data-penny-id="${penny.id}">
-            <img src="${penny.imageData}" alt="${penny.name}" class="penny-image" onclick="openPennyView('${penny.id}')">
+        <div class="penny-item" data-penny-id="${penny.id}" data-search-term="${currentAlbum.currentSearchContext || ''}">
+            <img src="${penny.imageData}" alt="${penny.name}" class="penny-image" onclick="openPennyViewFromElement(this.parentElement)">
             <div class="penny-info">
                 <h4>${penny.name}</h4>
                 <p class="location">${penny.location}</p>
@@ -1483,18 +1610,109 @@ function openAddPennyModal() {
 function closeAddPennyModal() {
     addPennyModal.style.display = 'none';
     resetUpload();
+    
+    // Clear manual entry form fields
+    const pennyName = document.getElementById('pennyName');
+    const pennyLocation = document.getElementById('pennyLocation');
+    const pennyDescription = document.getElementById('pennyDescription');
+    const pennyDate = document.getElementById('pennyDate');
+    const pennyNotes = document.getElementById('pennyNotes');
+    
+    if (pennyName) pennyName.value = '';
+    if (pennyLocation) pennyLocation.value = '';
+    if (pennyDescription) pennyDescription.value = '';
+    if (pennyDate) pennyDate.value = '';
+    if (pennyNotes) pennyNotes.value = '';
 }
 
-function openPennyView(pennyId) {
+function showManualEntryForm() {
+    // Hide the preview actions and show the manual entry form
+    document.getElementById('uploadPreview').style.display = 'none';
+    document.getElementById('manualEntryForm').style.display = 'block';
+    document.getElementById('saveManualPennyBtn').style.display = 'inline-flex';
+}
+
+function saveManualPenny() {
+    // Validate required fields
+    const name = document.getElementById('pennyName').value.trim();
+    const location = document.getElementById('pennyLocation').value.trim();
+    const description = document.getElementById('pennyDescription').value.trim();
+    
+    if (!name || !location || !description) {
+        showNotification('Please fill in all required fields', 'error');
+        return;
+    }
+    
+    if (!currentAlbum || !currentImageData) {
+        showNotification('Missing album or image data', 'error');
+        return;
+    }
+    
+    // Create penny object from manual entry
+    const penny = {
+        id: Date.now().toString(),
+        name: name,
+        location: location,
+        description: description,
+        dateCollected: document.getElementById('pennyDate').value || new Date().toISOString().split('T')[0],
+        notes: document.getElementById('pennyNotes').value.trim() || '',
+        imageData: currentImageData,
+        addedAt: new Date().toISOString()
+    };
+    
+    // Add penny to album
+    currentAlbum.pennies.push(penny);
+    currentAlbum.updatedAt = new Date().toISOString();
+    
+    // Save and update
+    saveAlbumsToStorage();
+    renderAlbums();
+    renderAlbumPennies();
+    
+    // Reset and close
+    resetUpload();
+    closeAddPennyModal();
+    
+    showNotification('Penny added to album successfully!', 'success');
+}
+
+function openPennyViewFromElement(pennyElement) {
+    const pennyId = pennyElement.dataset.pennyId;
+    const searchTerm = pennyElement.dataset.searchTerm || '';
+    openPennyView(pennyId, searchTerm);
+}
+
+function openPennyView(pennyId, searchTerm = '') {
     const penny = currentAlbum.pennies.find(p => p.id === pennyId);
     if (!penny) return;
     
+    // Apply search highlighting if there's a search term
+    const highlightedName = searchTerm ? highlightSearchTerm(penny.name, searchTerm) : penny.name;
+    const highlightedLocation = searchTerm ? highlightSearchTerm(penny.location, searchTerm) : penny.location;
+    const highlightedDescription = searchTerm ? highlightSearchTerm(penny.description, searchTerm) : penny.description;
+    const highlightedNotes = searchTerm && penny.notes ? highlightSearchTerm(penny.notes, searchTerm) : (penny.notes || '');
+    
     document.getElementById('pennyViewTitle').textContent = penny.name;
     document.getElementById('pennyViewImage').src = penny.imageData;
-    document.getElementById('pennyViewName').textContent = penny.name;
-    document.getElementById('pennyViewLocation').textContent = penny.location;
+    document.getElementById('pennyViewName').innerHTML = highlightedName;
+    document.getElementById('pennyViewLocation').innerHTML = highlightedLocation;
     document.getElementById('pennyViewDate').textContent = penny.dateCollected ? new Date(penny.dateCollected).toLocaleDateString() : 'No date';
-    document.getElementById('pennyViewDescription').textContent = penny.description;
+    document.getElementById('pennyViewDescription').innerHTML = highlightedDescription;
+    
+    // Add notes field if it exists and has content
+    const notesElement = document.getElementById('pennyViewNotes');
+    const notesLabel = notesElement ? notesElement.previousElementSibling : null;
+    
+    if (notesElement && notesLabel) {
+        if (highlightedNotes) {
+            notesElement.innerHTML = highlightedNotes;
+            notesElement.style.display = 'block';
+            notesLabel.style.display = 'block';
+        } else {
+            notesElement.style.display = 'none';
+            notesLabel.style.display = 'none';
+        }
+    }
     
     document.getElementById('pennyViewModal').style.display = 'block';
 }
@@ -1864,6 +2082,12 @@ window.addEventListener('click', function(event) {
     if (event.target.id === 'shareModal') {
         closeShareModal();
     }
+    if (event.target.id === 'userGuideModal') {
+        closeUserGuideModal();
+    }
+    if (event.target.id === 'sortOptionsModal') {
+        closeSortOptionsModal();
+    }
 });
 
 // Menu item functions
@@ -1888,7 +2112,120 @@ function openCollectionDefaults() {
 }
 
 function openUserGuide() {
-    showNotification('User Guide - Coming Soon!', 'info');
+    const modal = document.getElementById('userGuideModal');
+    if (modal) {
+        modal.style.display = 'block';
+        // Reset to first section
+        showGuideSection('getting-started');
+    }
+}
+
+function closeUserGuideModal() {
+    const modal = document.getElementById('userGuideModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+function showGuideSection(sectionId) {
+    // Hide all sections
+    const sections = document.querySelectorAll('.guide-section');
+    sections.forEach(section => {
+        section.classList.remove('active');
+    });
+    
+    // Remove active class from all nav buttons
+    const navButtons = document.querySelectorAll('.guide-nav-btn');
+    navButtons.forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Show selected section
+    const selectedSection = document.getElementById(sectionId);
+    if (selectedSection) {
+        selectedSection.classList.add('active');
+    }
+    
+    // Activate corresponding nav button
+    const activeButton = document.querySelector(`[data-section="${sectionId}"]`);
+    if (activeButton) {
+        activeButton.classList.add('active');
+    }
+}
+
+function openUserGuideInNewTab() {
+    // Create a new window with the user guide content
+    const guideWindow = window.open('', '_blank', 'width=900,height=700,scrollbars=yes');
+    
+    if (guideWindow) {
+        const guideContent = document.querySelector('.guide-content').innerHTML;
+        const guideNav = document.querySelector('.guide-navigation').innerHTML;
+        
+        guideWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>User Guide - Traveler's Penny Log</title>
+                <style>
+                    body { font-family: Arial, sans-serif; line-height: 1.6; margin: 20px; }
+                    .guide-nav { margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #ddd; }
+                    .guide-nav button { margin: 5px; padding: 8px 16px; border: 1px solid #ccc; background: #f8f9fa; cursor: pointer; border-radius: 20px; }
+                    .guide-nav button.active { background: #8b4513; color: white; border-color: #8b4513; }
+                    .guide-section { display: none; }
+                    .guide-section.active { display: block; }
+                    h4 { color: #2d2d2d; }
+                    h5 { color: #555; }
+                    strong { color: #2d2d2d; }
+                    .guide-tip { background: #f8f9fa; border-left: 4px solid #8b4513; padding: 12px 16px; margin: 15px 0; }
+                </style>
+            </head>
+            <body>
+                <h1>User Guide - Traveler's Penny Log</h1>
+                <div class="guide-nav">
+                    ${guideNav}
+                </div>
+                <div class="guide-content">
+                    ${guideContent}
+                </div>
+                <script>
+                    // Add navigation functionality to the new window
+                    document.querySelectorAll('.guide-nav button').forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            const sectionId = this.getAttribute('data-section');
+                            showSection(sectionId);
+                        });
+                    });
+                    
+                    function showSection(sectionId) {
+                        // Hide all sections
+                        document.querySelectorAll('.guide-section').forEach(section => {
+                            section.classList.remove('active');
+                        });
+                        
+                        // Remove active class from all nav buttons
+                        document.querySelectorAll('.guide-nav button').forEach(btn => {
+                            btn.classList.remove('active');
+                        });
+                        
+                        // Show selected section
+                        const selectedSection = document.getElementById(sectionId);
+                        if (selectedSection) {
+                            selectedSection.classList.add('active');
+                        }
+                        
+                        // Activate corresponding nav button
+                        const activeButton = document.querySelector(\`[data-section="\${sectionId}"]\`);
+                        if (activeButton) {
+                            activeButton.classList.add('active');
+                        }
+                    }
+                </script>
+            </body>
+            </html>
+        `);
+        
+        guideWindow.document.close();
+    }
 }
 
 function openAbout() {

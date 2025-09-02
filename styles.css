@@ -407,7 +407,7 @@ body {
 }
 
 .show-all-btn {
-    background: var(--accent-blue);
+    background: #8B7355;
     color: white;
     border: none;
     padding: 8px 16px;
@@ -422,7 +422,7 @@ body {
 }
 
 .show-all-btn:hover {
-    background: var(--accent-purple);
+    background: #A0522D;
     transform: translateY(-1px);
     box-shadow: 0 4px 12px var(--shadow-accent);
 }
@@ -481,7 +481,7 @@ body {
 }
 
 .match-indicator.penny-match {
-    background: #6f42c1;
+    background: #8B7355;
 }
 
 .album-card.search-result {
@@ -623,7 +623,38 @@ body {
     color: white;
 }
 
-.analyze-btn:hover {
+.manual-entry-btn {
+    background: linear-gradient(135deg, var(--accent-red) 0%, var(--accent-orange) 100%);
+    color: white;
+    border: none;
+    border-radius: 25px;
+    padding: 12px 25px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.manual-entry-form {
+    margin-top: 20px;
+    padding: 20px;
+    background: var(--bg-tertiary);
+    border-radius: 10px;
+    border: 1px solid var(--border-secondary);
+}
+
+.manual-entry-form h4 {
+    margin-bottom: 20px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.analyze-btn:hover, .manual-entry-btn:hover {
     transform: translateY(-2px);
     box-shadow: 0 5px 15px var(--shadow-button);
 }
@@ -1549,7 +1580,11 @@ body {
     gap: 6px;
     font-weight: 600;
     font-family: 'Inter', sans-serif;
-    color: var(--text-tertiary);
+    color: white;
+    background: var(--accent-primary);
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
 }
 
 .album-date {
@@ -2080,7 +2115,8 @@ body {
     color: var(--text-tertiary);
 }
 
-.penny-view-info #pennyViewDescription {
+.penny-view-info #pennyViewDescription,
+.penny-view-info #pennyViewNotes {
     word-wrap: break-word;
     overflow-wrap: break-word;
     hyphens: auto;
@@ -2107,6 +2143,113 @@ body {
 .penny-image:hover {
     transform: scale(1.05);
 }
+/* User Guide Modal Styles */
+.user-guide-content {
+    max-width: 800px;
+    max-height: 85vh;
+}
+
+.guide-navigation {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    border-bottom: 2px solid var(--border-secondary);
+    padding-bottom: 15px;
+}
+
+.guide-nav-btn {
+    padding: 8px 16px;
+    border: 1px solid var(--border-primary);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.guide-nav-btn:hover {
+    border-color: var(--accent-primary);
+    background: var(--bg-hover);
+    color: var(--accent-primary);
+}
+
+.guide-nav-btn.active {
+    background: var(--accent-primary);
+    color: white;
+    border-color: var(--accent-primary);
+}
+
+.guide-content {
+    max-height: 60vh;
+    overflow-y: auto;
+    padding-right: 10px;
+}
+
+.guide-section {
+    display: none;
+}
+
+.guide-section.active {
+    display: block;
+}
+
+.guide-section h4 {
+    font-size: 1.3rem;
+    margin-bottom: 15px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.guide-section h4 i {
+    color: var(--accent-primary);
+}
+
+.guide-section h5 {
+    font-size: 1.1rem;
+    margin: 20px 0 10px 0;
+    color: var(--text-tertiary);
+    font-weight: 600;
+}
+
+.guide-section p {
+    margin-bottom: 15px;
+    line-height: 1.6;
+    color: var(--text-primary);
+}
+
+.guide-section ul, .guide-section ol {
+    margin-bottom: 15px;
+    padding-left: 20px;
+}
+
+.guide-section li {
+    margin-bottom: 8px;
+    line-height: 1.5;
+    color: var(--text-primary);
+}
+
+.guide-section strong {
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.guide-section .guide-tip {
+    background: var(--bg-tertiary);
+    border-left: 4px solid var(--accent-primary);
+    padding: 12px 16px;
+    margin: 15px 0;
+    border-radius: 0 6px 6px 0;
+}
+
+.guide-section .guide-tip strong {
+    color: var(--accent-primary);
+}
+
 /* Responsive adjustments for full-screen album view */
 @media (max-width: 768px) {
     .album-view-screen {
@@ -2167,4 +2310,56 @@ body {
     .penny-view-image img {
         max-height: 200px;
     }
+    
+    /* User Guide Mobile Adjustments */
+    .user-guide-content {
+        max-width: 95%;
+        max-height: 90vh;
+    }
+    
+    .guide-navigation {
+        flex-direction: column;
+        gap: 6px;
+    }
+    
+    .guide-nav-btn {
+        width: 100%;
+        text-align: center;
+        padding: 10px 16px;
+    }
+    
+    .guide-content {
+        max-height: 50vh;
+    }
+}
+
+.album-view-content .penny-info .description {
+    color: var(--text-muted);
+    font-style: italic;
+    margin-top: 8px;
+    line-height: 1.4;
+}
+
+/* Search Match Penny Styling */
+.penny-item.search-match {
+    border: 2px solid #8B7355;
+    box-shadow: 0 4px 15px var(--shadow-primary), 0 0 0 1px #8B7355;
+    background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(139, 115, 85, 0.08) 100%);
+}
+
+.penny-item.search-match:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px var(--shadow-primary), 0 0 0 2px #8B7355;
+}
+
+.penny-item.search-match .penny-info h4 {
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.penny-item.search-match .penny-info .description {
+    color: var(--text-secondary);
+    font-style: italic;
+    margin-top: 8px;
+    line-height: 1.4;
 }

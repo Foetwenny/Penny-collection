@@ -121,7 +121,7 @@
                     <span id="searchResultsQuery"></span>
                 </div>
                 <button id="showAllAlbumsBtn" class="show-all-btn" onclick="showAllAlbums()">
-                    <i class="fas fa-list"></i> Show All Albums
+                                                    <i class="fas fa-times"></i> Clear Search
                 </button>
             </div>
         </div>
@@ -591,10 +591,40 @@
                                 <button class="analyze-btn" id="analyzeBtn">
                                     <i class="fas fa-magic"></i> Analyze with AI
                                 </button>
+                                <button class="manual-entry-btn" id="manualEntryBtn">
+                                    <i class="fas fa-edit"></i> Enter Details Manually
+                                </button>
                                 <button class="reset-btn" onclick="resetUpload()">
                                     <i class="fas fa-times"></i> Reset
                                 </button>
                             </div>
+                        </div>
+                        
+                        <!-- Manual Entry Form -->
+                        <div class="manual-entry-form" id="manualEntryForm" style="display: none;">
+                            <h4><i class="fas fa-edit"></i> Penny Details</h4>
+                            <form id="pennyEntryForm">
+                                <div class="form-group">
+                                    <label for="pennyName">Name/Title:</label>
+                                    <input type="text" id="pennyName" required placeholder="What does this penny commemorate?">
+                                </div>
+                                <div class="form-group">
+                                    <label for="pennyLocation">Location:</label>
+                                    <input type="text" id="pennyLocation" required placeholder="Where did you collect this penny?">
+                                </div>
+                                <div class="form-group">
+                                    <label for="pennyDescription">Description:</label>
+                                    <textarea id="pennyDescription" rows="3" required placeholder="Describe the penny design and details..."></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label for="pennyDate">Date Collected:</label>
+                                    <input type="date" id="pennyDate">
+                                </div>
+                                <div class="form-group">
+                                    <label for="pennyNotes">Personal Notes:</label>
+                                    <textarea id="pennyNotes" rows="2" placeholder="Any memories or observations..."></textarea>
+                                </div>
+                            </form>
                         </div>
                         
                         <!-- Analysis Results -->
@@ -628,6 +658,9 @@
                     </div>
                     <div class="modal-footer">
                         <button class="cancel-btn" onclick="closeAddPennyModal()">Cancel</button>
+                        <button class="save-btn" id="saveManualPennyBtn" style="display: none;" onclick="saveManualPenny()">
+                            <i class="fas fa-save"></i> Save Penny
+                        </button>
                     </div>
                 </div>
             </div>
@@ -651,125 +684,284 @@
                             <p><strong>Date Collected:</strong> <span id="pennyViewDate"></span></p>
                             <p><strong>Description:</strong></p>
                             <p id="pennyViewDescription"></p>
+                            <p style="display: none;"><strong>Personal Notes:</strong></p>
+                            <p id="pennyViewNotes" style="display: none;"></p>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Sort Options Modal -->
-            <div class="modal" id="sortOptionsModal">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h3><i class="fas fa-sort"></i> Sort Albums</h3>
-                        <button class="close-btn" onclick="closeSortOptionsModal()">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="sort-options">
-                            <div class="sort-option">
-                                <label class="sort-option-label">
-                                    <input type="radio" name="sortBy" value="dateCreated" class="sort-radio">
-                                    <span class="radio-checkmark"></span>
-                                    <span class="sort-text">Date Created</span>
-                                </label>
-                                <div class="sort-direction">
-                                    <button class="direction-btn" data-sort="dateCreated" data-direction="desc">
-                                        <i class="fas fa-sort-amount-down"></i> Newest First
-                                    </button>
-                                    <button class="direction-btn" data-sort="dateCreated" data-direction="asc">
-                                        <i class="fas fa-sort-amount-up"></i> Oldest First
-                                    </button>
-                                </div>
-                            </div>
+                         <!-- Sort Options Modal -->
+             <div class="modal" id="sortOptionsModal">
+                 <div class="modal-content">
+                     <div class="modal-header">
+                         <h3><i class="fas fa-sort"></i> Sort Albums</h3>
+                         <button class="close-btn" onclick="closeSortOptionsModal()">
+                             <i class="fas fa-times"></i>
+                         </button>
+                     </div>
+                     <div class="modal-body">
+                         <div class="sort-options">
+                             <div class="sort-option">
+                                 <label class="sort-option-label">
+                                     <input type="radio" name="sortBy" value="dateCreated" class="sort-radio">
+                                     <span class="radio-checkmark"></span>
+                                     <span class="sort-text">Date Created</span>
+                                 </label>
+                                 <div class="sort-direction">
+                                     <button class="direction-btn" data-sort="dateCreated" data-direction="desc">
+                                         <i class="fas fa-sort-amount-down"></i> Newest First
+                                     </button>
+                                     <button class="direction-btn" data-sort="dateCreated" data-direction="asc">
+                                         <i class="fas fa-sort-amount-up"></i> Oldest First
+                                     </button>
+                                 </div>
+                             </div>
 
-                            <div class="sort-option">
-                                <label class="sort-option-label">
-                                    <input type="radio" name="sortBy" value="tripDate" class="sort-radio">
-                                    <span class="radio-checkmark"></span>
-                                    <span class="sort-text">Trip Date</span>
-                                </label>
-                                <div class="sort-direction">
-                                    <button class="direction-btn" data-sort="tripDate" data-direction="desc">
-                                        <i class="fas fa-sort-amount-down"></i> Most Recent Trip
-                                    </button>
-                                    <button class="direction-btn" data-sort="tripDate" data-direction="asc">
-                                        <i class="fas fa-sort-amount-up"></i> Oldest Trip
-                                    </button>
-                                </div>
-                            </div>
+                             <div class="sort-option">
+                                 <label class="sort-option-label">
+                                     <input type="radio" name="sortBy" value="tripDate" class="sort-radio">
+                                     <span class="radio-checkmark"></span>
+                                     <span class="sort-text">Trip Date</span>
+                                 </label>
+                                 <div class="sort-direction">
+                                     <button class="direction-btn" data-sort="tripDate" data-direction="desc">
+                                         <i class="fas fa-sort-amount-down"></i> Most Recent Trip
+                                     </button>
+                                     <button class="direction-btn" data-sort="tripDate" data-direction="asc">
+                                         <i class="fas fa-sort-amount-up"></i> Oldest Trip
+                                     </button>
+                                 </div>
+                             </div>
 
-                            <div class="sort-option">
-                                <label class="sort-option-label">
-                                    <input type="radio" name="sortBy" value="albumName" class="sort-radio">
-                                    <span class="radio-checkmark"></span>
-                                    <span class="sort-text">Album Name</span>
-                                </label>
-                                <div class="sort-direction">
-                                    <button class="direction-btn" data-sort="albumName" data-direction="asc">
-                                        <i class="fas fa-sort-alpha-down"></i> A to Z
-                                    </button>
-                                    <button class="direction-btn" data-sort="albumName" data-direction="desc">
-                                        <i class="fas fa-sort-alpha-up"></i> Z to A
-                                    </button>
-                                </div>
-                            </div>
+                             <div class="sort-option">
+                                 <label class="sort-option-label">
+                                     <input type="radio" name="sortBy" value="albumName" class="sort-radio">
+                                     <span class="radio-checkmark"></span>
+                                     <span class="sort-text">Album Name</span>
+                                 </label>
+                                 <div class="sort-direction">
+                                     <button class="direction-btn" data-sort="albumName" data-direction="asc">
+                                         <i class="fas fa-sort-alpha-down"></i> A to Z
+                                     </button>
+                                     <button class="direction-btn" data-sort="albumName" data-direction="desc">
+                                         <i class="fas fa-sort-alpha-up"></i> Z to A
+                                     </button>
+                                 </div>
+                             </div>
 
-                            <div class="sort-option">
-                                <label class="sort-option-label">
-                                    <input type="radio" name="sortBy" value="location" class="sort-radio">
-                                    <span class="radio-checkmark"></span>
-                                    <span class="sort-text">Location</span>
-                                </label>
-                                <div class="sort-direction">
-                                    <button class="direction-btn" data-sort="location" data-direction="asc">
-                                        <i class="fas fa-sort-alpha-down"></i> A to Z
-                                    </button>
-                                    <button class="direction-btn" data-sort="location" data-direction="desc">
-                                        <i class="fas fa-sort-alpha-up"></i> Z to A
-                                    </button>
-                                </div>
-                            </div>
+                             <div class="sort-option">
+                                 <label class="sort-option-label">
+                                     <input type="radio" name="sortBy" value="location" class="sort-radio">
+                                     <span class="radio-checkmark"></span>
+                                     <span class="sort-text">Location</span>
+                                 </label>
+                                 <div class="sort-direction">
+                                     <button class="direction-btn" data-sort="location" data-direction="asc">
+                                         <i class="fas fa-sort-alpha-down"></i> A to Z
+                                     </button>
+                                     <button class="direction-btn" data-sort="location" data-direction="desc">
+                                         <i class="fas fa-sort-alpha-up"></i> Z to A
+                                     </button>
+                                 </div>
+                             </div>
 
-                            <div class="sort-option">
-                                <label class="sort-option-label">
-                                    <input type="radio" name="sortBy" value="pennyCount" class="sort-radio">
-                                    <span class="radio-checkmark"></span>
-                                    <span class="sort-text">Penny Count</span>
-                                </label>
-                                <div class="sort-direction">
-                                    <button class="direction-btn" data-sort="pennyCount" data-direction="desc">
-                                        <i class="fas fa-sort-amount-down"></i> Most Pennies
-                                    </button>
-                                    <button class="direction-btn" data-sort="pennyCount" data-direction="asc">
-                                        <i class="fas fa-sort-amount-up"></i> Least Pennies
-                                    </button>
-                                </div>
-                            </div>
+                             <div class="sort-option">
+                                 <label class="sort-option-label">
+                                     <input type="radio" name="sortBy" value="pennyCount" class="sort-radio">
+                                     <span class="radio-checkmark"></span>
+                                     <span class="sort-text">Penny Count</span>
+                                 </label>
+                                 <div class="sort-direction">
+                                     <button class="direction-btn" data-sort="pennyCount" data-direction="desc">
+                                         <i class="fas fa-sort-amount-down"></i> Most Pennies
+                                     </button>
+                                     <button class="direction-btn" data-sort="pennyCount" data-direction="asc">
+                                         <i class="fas fa-sort-amount-up"></i> Least Pennies
+                                     </button>
+                                 </div>
+                             </div>
 
-                            <div class="sort-option">
-                                <label class="sort-option-label">
-                                    <input type="radio" name="sortBy" value="lastModified" class="sort-radio">
-                                    <span class="radio-checkmark"></span>
-                                    <span class="sort-text">Last Modified</span>
-                                </label>
-                                <div class="sort-direction">
-                                    <button class="direction-btn" data-sort="lastModified" data-direction="desc">
-                                        <i class="fas fa-sort-amount-down"></i> Recently Updated
-                                    </button>
-                                    <button class="direction-btn" data-sort="lastModified" data-direction="asc">
-                                        <i class="fas fa-sort-amount-up"></i> Oldest Update
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button class="cancel-btn" onclick="closeSortOptionsModal()">Cancel</button>
-                        <button class="save-btn" onclick="applySort()">Apply Sort</button>
-                    </div>
-                </div>
-            </div>
+                             <div class="sort-option">
+                                 <label class="sort-option-label">
+                                     <input type="radio" name="sortBy" value="lastModified" class="sort-radio">
+                                     <span class="radio-checkmark"></span>
+                                     <span class="sort-text">Last Modified</span>
+                                 </label>
+                                 <div class="sort-direction">
+                                     <button class="direction-btn" data-sort="lastModified" data-direction="desc">
+                                         <i class="fas fa-sort-amount-down"></i> Recently Updated
+                                     </button>
+                                     <button class="direction-btn" data-sort="lastModified" data-direction="asc">
+                                         <i class="fas fa-sort-amount-up"></i> Oldest Update
+                                     </button>
+                                 </div>
+                             </div>
+                         </div>
+                     </div>
+                     <div class="modal-footer">
+                         <button class="cancel-btn" onclick="closeSortOptionsModal()">Cancel</button>
+                         <button class="save-btn" onclick="applySort()">Apply Sort</button>
+                     </div>
+                 </div>
+             </div>
+
+             <!-- User Guide Modal -->
+             <div class="modal" id="userGuideModal">
+                 <div class="modal-content user-guide-content">
+                     <div class="modal-header">
+                         <h3><i class="fas fa-book-open"></i> User Guide</h3>
+                         <button class="close-btn" onclick="closeUserGuideModal()">
+                             <i class="fas fa-times"></i>
+                         </button>
+                     </div>
+                     <div class="modal-body">
+                         <div class="guide-navigation">
+                             <button class="guide-nav-btn active" data-section="getting-started">Getting Started</button>
+                             <button class="guide-nav-btn" data-section="albums">Albums</button>
+                             <button class="guide-nav-btn" data-section="search-sort">Search & Sort</button>
+                             <button class="guide-nav-btn" data-section="pennies">Pennies</button>
+                             <button class="guide-nav-btn" data-section="features">Features</button>
+                         </div>
+                         
+                         <div class="guide-content">
+                             <!-- Getting Started Section -->
+                             <div class="guide-section active" id="getting-started">
+                                 <h4><i class="fas fa-rocket"></i> Getting Started</h4>
+                                 <p>Welcome to Traveler's Penny Log! This app helps you organize and display your pressed penny collection.</p>
+                                 
+                                 <h5>Quick Start:</h5>
+                                 <ol>
+                                     <li><strong>Create Your First Album:</strong> Click the "Create New Album" button in the header</li>
+                                     <li><strong>Add Details:</strong> Fill in the album name, description, and select categories</li>
+                                     <li><strong>Add Pennies:</strong> Open the album and click "Add Penny" to start your collection</li>
+                                 </ol>
+                                 
+                                 <h5>Navigation:</h5>
+                                 <ul>
+                                     <li><strong>Header:</strong> Search bar, create album button, dark mode toggle, and menu</li>
+                                     <li><strong>Menu (⋮):</strong> Access to advanced features, settings, and help</li>
+                                     <li><strong>Album Cards:</strong> Click to open full album view</li>
+                                 </ul>
+                             </div>
+                             
+                             <!-- Albums Section -->
+                             <div class="guide-section" id="albums">
+                                 <h4><i class="fas fa-book"></i> Managing Albums</h4>
+                                 
+                                 <h5>Creating Albums:</h5>
+                                 <ul>
+                                     <li><strong>Name:</strong> Choose a descriptive name for your collection</li>
+                                     <li><strong>Description:</strong> Add details about what the album contains</li>
+                                     <li><strong>Categories:</strong> Select one or more categories to help organize and search</li>
+                                     <li><strong>Trip Date:</strong> When you visited the location (optional)</li>
+                                     <li><strong>Location:</strong> Where you collected the pennies</li>
+                                     <li><strong>Location URL:</strong> Add a map link to make the location clickable</li>
+                                     <li><strong>Background Image:</strong> Add a cover image for visual appeal</li>
+                                 </ul>
+                                 
+                                 <h5>Album Actions:</h5>
+                                 <ul>
+                                     <li><strong>View:</strong> Click the album card to see all details and pennies</li>
+                                     <li><strong>Edit:</strong> Modify album information anytime</li>
+                                     <li><strong>Delete:</strong> Remove albums you no longer need</li>
+                                 </ul>
+                             </div>
+                             
+                             <!-- Search & Sort Section -->
+                             <div class="guide-section" id="search-sort">
+                                 <h4><i class="fas fa-search"></i> Search & Organization</h4>
+                                 
+                                 <h5>Search:</h5>
+                                 <ul>
+                                     <li><strong>Search Bar:</strong> Find albums by name, description, location, or penny details</li>
+                                     <li><strong>Categories:</strong> Search by album categories (e.g., "Theme Parks", "National Parks")</li>
+                                     <li><strong>Results:</strong> See highlighted matches and which fields contained your search term</li>
+                                     <li><strong>Matched Pennies:</strong> When opening an album from search results, matching pennies appear first in the grid</li>
+                                 </ul>
+                                 
+                                 <h5>Sorting:</h5>
+                                 <ul>
+                                     <li><strong>Date Created:</strong> Newest or oldest albums first</li>
+                                     <li><strong>Trip Date:</strong> Most recent or oldest trips first</li>
+                                     <li><strong>Album Name:</strong> Alphabetical order (A-Z or Z-A)</li>
+                                     <li><strong>Location:</strong> Alphabetical by location</li>
+                                     <li><strong>Penny Count:</strong> Most or least pennies first</li>
+                                     <li><strong>Last Modified:</strong> Recently updated albums first</li>
+                                 </ul>
+                                 
+                                 <p><strong>Tip:</strong> Your sort preference is saved and applied automatically!</p>
+                             </div>
+                             
+                             <!-- Pennies Section -->
+                             <div class="guide-section" id="pennies">
+                                 <h4><i class="fas fa-coins"></i> Managing Pennies</h4>
+                                 
+                                 <h5>Adding Pennies:</h5>
+                                 <ul>
+                                     <li><strong>Upload Image:</strong> Drag & drop or click to browse for penny photos</li>
+                                     <li><strong>AI Analysis:</strong> Use AI to automatically identify location and details (optional)</li>
+                                     <li><strong>Manual Entry:</strong> Enter all penny details manually without AI analysis</li>
+                                     <li><strong>Flexible Workflow:</strong> Choose between AI assistance or manual entry based on your preference</li>
+                                 </ul>
+                                 
+                                 <h5>Penny Information:</h5>
+                                 <ul>
+                                     <li><strong>Name/Title:</strong> What the penny commemorates</li>
+                                     <li><strong>Location:</strong> Where you collected it</li>
+                                     <li><strong>Description:</strong> Details about the penny design</li>
+                                     <li><strong>Date Collected:</strong> When you got the penny</li>
+                                     <li><strong>Personal Notes:</strong> Your memories or observations</li>
+                                 </ul>
+                                 
+                                 <h5>Penny Actions:</h5>
+                                 <ul>
+                                     <li><strong>View:</strong> Click penny images to see full details</li>
+                                     <li><strong>Edit:</strong> Modify penny information anytime</li>
+                                     <li><strong>Delete:</strong> Remove pennies from albums</li>
+                                 </ul>
+                             </div>
+                             
+                             <!-- Features Section -->
+                             <div class="guide-section" id="features">
+                                 <h4><i class="fas fa-star"></i> App Features</h4>
+                                 
+                                 <h5>Dark Mode:</h5>
+                                 <p>Toggle between light and dark themes using the moon icon in the header.</p>
+                                 
+                                 <h5>Data Management:</h5>
+                                 <ul>
+                                     <li><strong>Export Backup:</strong> Download your collection as a JSON file</li>
+                                     <li><strong>Import Backup:</strong> Restore your collection from a backup file</li>
+                                     <li><strong>Local Storage:</strong> All data is saved locally in your browser</li>
+                                 </ul>
+                                 
+                                 <h5>Menu Features:</h5>
+                                 <ul>
+                                     <li><strong>Collection Management:</strong> Backup and restore your data</li>
+                                     <li><strong>Search & Sort:</strong> Advanced search and sorting options</li>
+                                     <li><strong>App Settings:</strong> Configure AI and display preferences</li>
+                                     <li><strong>Help & Info:</strong> Access this guide and app information</li>
+                                 </ul>
+                                 
+                                 <h5>Tips:</h5>
+                                 <ul>
+                                     <li>Use categories to organize related albums (e.g., "Theme Parks" + "Family Vacations")</li>
+                                     <li>Add location URLs to make album cards clickable for maps</li>
+                                     <li>Search works across all album and penny fields</li>
+                                     <li>Your preferences (dark mode, sort order) are automatically saved</li>
+                                 </ul>
+                             </div>
+                         </div>
+                     </div>
+                     <div class="modal-footer">
+                         <button class="cancel-btn" onclick="closeUserGuideModal()">Close Guide</button>
+                         <button class="guide-nav-btn" onclick="openUserGuideInNewTab()">
+                             <i class="fas fa-external-link-alt"></i> Open in New Tab
+                         </button>
+                     </div>
+                 </div>
+             </div>
         </main>
     </div>
 
