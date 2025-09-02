@@ -33,6 +33,12 @@ document.addEventListener('DOMContentLoaded', function() {
     renderAlbums();
     showEmptyAlbumsStateIfNeeded();
     initializeDarkMode();
+    initializeSortEventListeners();
+    
+    // Apply default sort
+    const currentSort = getCurrentSortSettings();
+    sortAlbums(currentSort.field, currentSort.direction);
+    updateSortIndicator(currentSort.field, currentSort.direction);
     
     // Set up menu event listeners (only once)
     console.log('=== Setting up menu event listeners ===');
@@ -43,6 +49,11 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Setting up click outside listener for menu...');
         // Close menu when clicking outside
         document.addEventListener('click', function(event) {
+            // Don't close if clicking on the menu toggle button itself
+            if (event.target === menuToggle || menuToggle.contains(event.target)) {
+                return;
+            }
+            
             const menuContainer = menuToggle.closest('.menu-dropdown');
             if (menuContainer && !menuContainer.contains(event.target)) {
                 console.log('Click outside menu detected, closing menu...');
@@ -227,10 +238,13 @@ function renderFilteredAlbums(filteredAlbums) {
                 <i class="fas fa-search"></i>
                 <h3>No albums found</h3>
                 <p>Try adjusting your search terms or browse all albums.</p>
-            </div>
         `;
     } else {
-        renderAlbumsWithSearchHighlights(filteredAlbums);
+        // Apply current sort to filtered results
+        const currentSort = getCurrentSortSettings();
+        const sortedResults = [...filteredAlbums];
+        sortAlbumsArray(sortedResults, currentSort.field, currentSort.direction);
+        renderAlbumsWithSearchHighlights(sortedResults);
     }
 }
 
@@ -238,11 +252,22 @@ function renderAlbums() {
     if (albums.length === 0) {
         albumsGrid.style.display = 'none';
         emptyAlbumsState.style.display = 'block';
+        // Hide sort indicator when no albums
+        const sortIndicator = document.getElementById('sortIndicator');
+        if (sortIndicator) {
+            sortIndicator.style.display = 'none';
+        }
         return;
     }
     
     albumsGrid.style.display = 'grid';
     emptyAlbumsState.style.display = 'none';
+    
+    // Show sort indicator when albums exist
+    const sortIndicator = document.getElementById('sortIndicator');
+    if (sortIndicator) {
+        sortIndicator.style.display = 'flex';
+    }
     
     albumsGrid.innerHTML = albums.map(album => {
         const hasCover = album.imageUrl && album.imageUrl.length > 0;
@@ -279,11 +304,22 @@ function renderAlbumsWithSearchHighlights(filteredAlbums) {
     if (filteredAlbums.length === 0) {
         albumsGrid.style.display = 'none';
         emptyAlbumsState.style.display = 'block';
+        // Hide sort indicator when no albums
+        const sortIndicator = document.getElementById('sortIndicator');
+        if (sortIndicator) {
+            sortIndicator.style.display = 'none';
+        }
         return;
     }
     
     albumsGrid.style.display = 'grid';
     emptyAlbumsState.style.display = 'none';
+    
+    // Show sort indicator when albums exist
+    const sortIndicator = document.getElementById('sortIndicator');
+    if (sortIndicator) {
+        sortIndicator.style.display = 'flex';
+    }
     
     albumsGrid.innerHTML = filteredAlbums.map(album => {
         const hasCover = album.imageUrl && album.imageUrl.length > 0;
@@ -350,8 +386,9 @@ function clearSearch() {
     clearSearchBtn.style.display = 'none';
     searchResultsSection.style.display = 'none';
     
-    // Show all albums
-    renderAlbums();
+    // Show all albums with current sort
+    const currentSort = getCurrentSortSettings();
+    sortAlbums(currentSort.field, currentSort.direction);
 }
 
 function populateCategoryCheckboxes(containerSelector, selectedCategories) {
@@ -389,7 +426,172 @@ function openAdvancedSearch() {
 }
 
 function openSortOptions() {
-    showNotification('Sort options feature coming soon!', 'info');
+    const modal = document.getElementById('sortOptionsModal');
+    if (modal) {
+        modal.style.display = 'block';
+        loadCurrentSortSettings();
+    }
+}
+
+function closeSortOptionsModal() {
+    const modal = document.getElementById('sortOptionsModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+function loadCurrentSortSettings() {
+    const currentSort = getCurrentSortSettings();
+    
+    // Set the radio button
+    const radio = document.querySelector(`input[name="sortBy"][value="${currentSort.field}"]`);
+    if (radio) {
+        radio.checked = true;
+    }
+    
+    // Set the direction buttons
+    document.querySelectorAll('.direction-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.sort === currentSort.field && btn.dataset.direction === currentSort.direction) {
+            btn.classList.add('active');
+        }
+    });
+}
+
+function getCurrentSortSettings() {
+    const saved = localStorage.getItem('albumSortSettings');
+    if (saved) {
+        return JSON.parse(saved);
+    }
+    // Default sort: date created, newest first
+    return { field: 'dateCreated', direction: 'desc' };
+}
+
+function saveSortSettings(field, direction) {
+    const settings = { field, direction };
+    localStorage.setItem('albumSortSettings', JSON.stringify(settings));
+}
+
+function applySort() {
+    const selectedField = document.querySelector('input[name="sortBy"]:checked')?.value;
+    const selectedDirection = document.querySelector('.direction-btn.active')?.dataset.direction;
+    
+    if (!selectedField || !selectedDirection) {
+        showNotification('Please select both a sort field and direction', 'warning');
+        return;
+    }
+    
+    saveSortSettings(selectedField, selectedDirection);
+    sortAlbums(selectedField, selectedDirection);
+    closeSortOptionsModal();
+    showNotification('Albums sorted successfully!', 'success');
+}
+
+function sortAlbums(field, direction) {
+    const albumsCopy = [...albums]; // Create a copy to sort
+    
+    sortAlbumsArray(albumsCopy, field, direction);
+    
+    // Update the albums data and re-render
+    albums = albumsCopy;
+    renderAlbums();
+    updateSortIndicator(field, direction);
+}
+
+function sortAlbumsArray(albumsArray, field, direction) {
+    albumsArray.sort((a, b) => {
+        let aValue, bValue;
+        
+        switch (field) {
+            case 'dateCreated':
+                aValue = new Date(a.dateCreated || a.createdAt || 0);
+                bValue = new Date(b.dateCreated || b.createdAt || 0);
+                break;
+            case 'tripDate':
+                aValue = new Date(a.tripDate || 0);
+                bValue = new Date(b.tripDate || 0);
+                break;
+            case 'albumName':
+                aValue = (a.name || '').toLowerCase();
+                bValue = (b.name || '').toLowerCase();
+                break;
+            case 'location':
+                aValue = (a.location || '').toLowerCase();
+                bValue = (b.location || '').toLowerCase();
+                break;
+            case 'pennyCount':
+                aValue = a.pennies ? a.pennies.length : 0;
+                bValue = b.pennies ? b.pennies.length : 0;
+                break;
+            case 'lastModified':
+                aValue = new Date(a.lastModified || a.updatedAt || a.dateCreated || 0);
+                bValue = new Date(b.lastModified || b.updatedAt || b.dateCreated || 0);
+                break;
+            default:
+                return 0;
+        }
+        
+        if (direction === 'asc') {
+            return aValue > bValue ? 1 : -1;
+        } else {
+            return aValue < bValue ? 1 : -1;
+        }
+    });
+}
+
+function updateSortIndicator(field, direction) {
+    const indicator = document.getElementById('sortIndicatorText');
+    if (!indicator) return;
+    
+    let fieldText, directionText;
+    
+    switch (field) {
+        case 'dateCreated':
+            fieldText = 'Date Created';
+            directionText = direction === 'desc' ? 'Newest First' : 'Oldest First';
+            break;
+        case 'tripDate':
+            fieldText = 'Trip Date';
+            directionText = direction === 'desc' ? 'Most Recent Trip' : 'Oldest Trip';
+            break;
+        case 'albumName':
+            fieldText = 'Album Name';
+            directionText = direction === 'asc' ? 'A to Z' : 'Z to A';
+            break;
+        case 'location':
+            fieldText = 'Location';
+            directionText = direction === 'asc' ? 'A to Z' : 'Z to A';
+            break;
+        case 'pennyCount':
+            fieldText = 'Penny Count';
+            directionText = direction === 'desc' ? 'Most Pennies' : 'Least Pennies';
+            break;
+        case 'lastModified':
+            fieldText = 'Last Modified';
+            directionText = direction === 'desc' ? 'Recently Updated' : 'Oldest Update';
+            break;
+        default:
+            fieldText = 'Unknown';
+            directionText = '';
+    }
+    
+    indicator.textContent = `Sorted by ${fieldText} (${directionText})`;
+}
+
+// Add event listeners for sort direction buttons
+function initializeSortEventListeners() {
+    document.addEventListener('click', function(event) {
+        if (event.target.classList.contains('direction-btn')) {
+            // Remove active class from all direction buttons in the same sort option
+            const sortOption = event.target.closest('.sort-option');
+            sortOption.querySelectorAll('.direction-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Add active class to clicked button
+            event.target.classList.add('active');
+        }
+    });
 }
 
 function openFilterSettings() {
@@ -1567,6 +1769,17 @@ function compressImageForStorage(base64Data) {
 function showEmptyAlbumsStateIfNeeded() {
     if (albums.length === 0) {
         renderAlbums();
+        // Hide sort indicator when no albums
+        const sortIndicator = document.getElementById('sortIndicator');
+        if (sortIndicator) {
+            sortIndicator.style.display = 'none';
+        }
+    } else {
+        // Show sort indicator when albums exist
+        const sortIndicator = document.getElementById('sortIndicator');
+        if (sortIndicator) {
+            sortIndicator.style.display = 'flex';
+        }
     }
 }
 
@@ -1656,10 +1869,6 @@ window.addEventListener('click', function(event) {
 // Menu item functions
 function openAdvancedSearch() {
     showNotification('Advanced Search - Coming Soon!', 'info');
-}
-
-function openSortOptions() {
-    showNotification('Sort Options - Coming Soon!', 'info');
 }
 
 function openFilterSettings() {

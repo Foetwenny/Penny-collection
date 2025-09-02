@@ -130,7 +130,13 @@
             <!-- Album Management Section -->
             <section class="album-section">
                 <div class="album-header">
-                    <h2><i class="fas fa-book"></i> Your Albums</h2>
+                    <h2>
+                        <i class="fas fa-book"></i> Your Albums
+                        <div class="sort-indicator" id="sortIndicator">
+                            <i class="fas fa-sort"></i>
+                            <span id="sortIndicatorText">Sorted by Date Created (Newest First)</span>
+                        </div>
+                    </h2>
                 </div>
                 
                 <div class="albums-grid" id="albumsGrid">
@@ -646,6 +652,121 @@
                             <p><strong>Description:</strong></p>
                             <p id="pennyViewDescription"></p>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sort Options Modal -->
+            <div class="modal" id="sortOptionsModal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3><i class="fas fa-sort"></i> Sort Albums</h3>
+                        <button class="close-btn" onclick="closeSortOptionsModal()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="sort-options">
+                            <div class="sort-option">
+                                <label class="sort-option-label">
+                                    <input type="radio" name="sortBy" value="dateCreated" class="sort-radio">
+                                    <span class="radio-checkmark"></span>
+                                    <span class="sort-text">Date Created</span>
+                                </label>
+                                <div class="sort-direction">
+                                    <button class="direction-btn" data-sort="dateCreated" data-direction="desc">
+                                        <i class="fas fa-sort-amount-down"></i> Newest First
+                                    </button>
+                                    <button class="direction-btn" data-sort="dateCreated" data-direction="asc">
+                                        <i class="fas fa-sort-amount-up"></i> Oldest First
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="sort-option">
+                                <label class="sort-option-label">
+                                    <input type="radio" name="sortBy" value="tripDate" class="sort-radio">
+                                    <span class="radio-checkmark"></span>
+                                    <span class="sort-text">Trip Date</span>
+                                </label>
+                                <div class="sort-direction">
+                                    <button class="direction-btn" data-sort="tripDate" data-direction="desc">
+                                        <i class="fas fa-sort-amount-down"></i> Most Recent Trip
+                                    </button>
+                                    <button class="direction-btn" data-sort="tripDate" data-direction="asc">
+                                        <i class="fas fa-sort-amount-up"></i> Oldest Trip
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="sort-option">
+                                <label class="sort-option-label">
+                                    <input type="radio" name="sortBy" value="albumName" class="sort-radio">
+                                    <span class="radio-checkmark"></span>
+                                    <span class="sort-text">Album Name</span>
+                                </label>
+                                <div class="sort-direction">
+                                    <button class="direction-btn" data-sort="albumName" data-direction="asc">
+                                        <i class="fas fa-sort-alpha-down"></i> A to Z
+                                    </button>
+                                    <button class="direction-btn" data-sort="albumName" data-direction="desc">
+                                        <i class="fas fa-sort-alpha-up"></i> Z to A
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="sort-option">
+                                <label class="sort-option-label">
+                                    <input type="radio" name="sortBy" value="location" class="sort-radio">
+                                    <span class="radio-checkmark"></span>
+                                    <span class="sort-text">Location</span>
+                                </label>
+                                <div class="sort-direction">
+                                    <button class="direction-btn" data-sort="location" data-direction="asc">
+                                        <i class="fas fa-sort-alpha-down"></i> A to Z
+                                    </button>
+                                    <button class="direction-btn" data-sort="location" data-direction="desc">
+                                        <i class="fas fa-sort-alpha-up"></i> Z to A
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="sort-option">
+                                <label class="sort-option-label">
+                                    <input type="radio" name="sortBy" value="pennyCount" class="sort-radio">
+                                    <span class="radio-checkmark"></span>
+                                    <span class="sort-text">Penny Count</span>
+                                </label>
+                                <div class="sort-direction">
+                                    <button class="direction-btn" data-sort="pennyCount" data-direction="desc">
+                                        <i class="fas fa-sort-amount-down"></i> Most Pennies
+                                    </button>
+                                    <button class="direction-btn" data-sort="pennyCount" data-direction="asc">
+                                        <i class="fas fa-sort-amount-up"></i> Least Pennies
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="sort-option">
+                                <label class="sort-option-label">
+                                    <input type="radio" name="sortBy" value="lastModified" class="sort-radio">
+                                    <span class="radio-checkmark"></span>
+                                    <span class="sort-text">Last Modified</span>
+                                </label>
+                                <div class="sort-direction">
+                                    <button class="direction-btn" data-sort="lastModified" data-direction="desc">
+                                        <i class="fas fa-sort-amount-down"></i> Recently Updated
+                                    </button>
+                                    <button class="direction-btn" data-sort="lastModified" data-direction="asc">
+                                        <i class="fas fa-sort-amount-up"></i> Oldest Update
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="cancel-btn" onclick="closeSortOptionsModal()">Cancel</button>
+                        <button class="save-btn" onclick="applySort()">Apply Sort</button>
                     </div>
                 </div>
             </div>

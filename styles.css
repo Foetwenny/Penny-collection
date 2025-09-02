@@ -1011,6 +1011,7 @@ body {
     background: var(--bg-tertiary);
     border-radius: 8px;
     border: 1px solid var(--border-secondary);
+    position: relative;
 }
 
 .category-checkbox-group {
@@ -1033,6 +1034,8 @@ body {
     font-size: 0.9rem;
     color: var(--text-primary);
     transition: color 0.3s ease;
+    position: relative;
+    padding: 4px 0;
 }
 
 .checkbox-label:hover {
@@ -1045,23 +1048,30 @@ body {
     cursor: pointer;
     height: 0;
     width: 0;
+    z-index: -1;
+    pointer-events: none;
 }
 
 .checkmark {
     width: 20px;
     height: 20px;
-    border: 2px solid var(--border-primary);
+    border: 2px solid #ddd;
     border-radius: 4px;
     margin-right: 12px;
     position: relative;
-    background: var(--bg-secondary);
+    background-color: white;
     transition: all 0.3s ease;
     flex-shrink: 0;
+    display: inline-block;
+    min-width: 20px;
+    min-height: 20px;
+    box-sizing: border-box;
+    vertical-align: middle;
 }
 
 .checkbox-label input[type="checkbox"]:checked + .checkmark {
-    background: var(--accent-primary);
-    border-color: var(--accent-primary);
+    background-color: #8b4513;
+    border-color: #8b4513;
 }
 
 .checkbox-label input[type="checkbox"]:checked + .checkmark::after {
@@ -1069,21 +1079,134 @@ body {
     position: absolute;
     left: 6px;
     top: 3px;
-    width: 7px;
-    height: 11px;
+    width: 6px;
+    height: 10px;
     border: solid white;
     border-width: 0 2px 2px 0;
     transform: rotate(45deg);
 }
 
 .checkbox-label:hover .checkmark {
-    border-color: var(--accent-primary);
+    border-color: #8b4513;
     box-shadow: 0 0 0 2px rgba(139, 69, 19, 0.1);
 }
 
 .checkbox-label input[type="checkbox"]:focus + .checkmark {
-    border-color: var(--accent-primary);
+    border-color: #8b4513;
     box-shadow: 0 0 0 3px rgba(139, 69, 19, 0.2);
+}
+
+/* Additional debugging styles */
+.checkbox-label {
+    border: 1px solid transparent;
+}
+
+.checkbox-label:hover {
+    border-color: #8b4513;
+}
+
+/* Sort Options Modal Styles */
+.sort-options {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.sort-option {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+    border: 1px solid var(--border-secondary);
+    border-radius: 8px;
+    background: var(--bg-tertiary);
+    transition: all 0.2s ease;
+}
+
+.sort-option:hover {
+    border-color: var(--accent-primary);
+    background: var(--bg-hover);
+}
+
+.sort-option-label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 1rem;
+}
+
+.sort-option-label input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    height: 0;
+    width: 0;
+}
+
+.radio-checkmark {
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--border-primary);
+    border-radius: 50%;
+    margin-right: 12px;
+    position: relative;
+    background: var(--bg-secondary);
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+}
+
+.sort-option-label input[type="radio"]:checked + .radio-checkmark {
+    border-color: var(--accent-primary);
+    background: var(--accent-primary);
+}
+
+.sort-option-label input[type="radio"]:checked + .radio-checkmark::after {
+    content: '';
+    position: absolute;
+    left: 5px;
+    top: 5px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: white;
+}
+
+.sort-direction {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.direction-btn {
+    padding: 8px 12px;
+    border: 1px solid var(--border-primary);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border-radius: 6px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.direction-btn:hover {
+    border-color: var(--accent-primary);
+    background: var(--bg-hover);
+    color: var(--accent-primary);
+}
+
+.direction-btn.active {
+    background: var(--accent-primary);
+    color: white;
+    border-color: var(--accent-primary);
+}
+
+.sort-text {
+    flex: 1;
 }
 
 .modal-footer {
@@ -1213,6 +1336,26 @@ body {
     .preview-actions button, .analysis-actions button {
         width: 100%;
     }
+    
+    .sort-direction {
+        flex-direction: column;
+    }
+    
+    .direction-btn {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .album-header h2 {
+        flex-direction: column;
+        gap: 0.5rem;
+        align-items: flex-start;
+    }
+    
+    .sort-indicator {
+        margin-left: 0;
+        margin-top: 4px;
+    }
 }
 
 /* Empty State */
@@ -1275,9 +1418,31 @@ body {
     margin-bottom: 1.5rem;
 }
 
+.sort-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    padding: 4px 8px;
+    background: var(--bg-tertiary);
+    border-radius: 4px;
+    border: 1px solid var(--border-secondary);
+    font-weight: normal;
+    margin-left: 8px;
+}
+
+.sort-indicator i {
+    color: var(--accent-primary);
+}
+
 .album-header h2 {
     margin: 0;
     color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
 }
 
 
