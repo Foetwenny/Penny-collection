@@ -45,18 +45,86 @@
                 <h1><i class="fas fa-coins"></i> Traveler's Penny Log <i class="fas fa-globe"></i></h1>
                 <p>Organize and display your pressed penny treasures</p>
                 <div class="header-actions">
-                    <button class="backup-btn" onclick="exportAlbums()" title="Export Backup">
-                        <i class="fas fa-download"></i> Backup
-                    </button>
-                    <button class="restore-btn" onclick="importAlbums()" title="Import Backup">
-                        <i class="fas fa-upload"></i> Restore
-                    </button>
+                    <div class="search-container">
+                        <input type="text" id="searchInput" class="search-input" placeholder="Search albums, locations, descriptions...">
+                        <button id="clearSearchBtn" class="clear-search-btn" style="display: none;" onclick="clearSearch()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
                     <button id="createAlbumBtn" class="create-album-btn" onclick="openCreateAlbumModal()">
                         <i class="fas fa-plus"></i> Create New Album
                     </button>
+                    <button id="darkModeToggle" class="dark-mode-toggle" onclick="toggleDarkMode()" title="Toggle Dark Mode">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                    <div class="menu-dropdown">
+                        <button id="menuToggle" class="menu-toggle" onclick="toggleMenu()" title="Menu">
+                            <i class="fas fa-ellipsis-v"></i>
+                        </button>
+                        <div id="menuDropdown" class="menu-dropdown-content">
+                            <div class="menu-section">
+                                <h4>Collection Management</h4>
+                                <button onclick="exportAlbums()" class="menu-item">
+                                    <i class="fas fa-download"></i> Export Backup
+                                </button>
+                                <button onclick="importAlbums()" class="menu-item">
+                                    <i class="fas fa-upload"></i> Import Backup
+                                </button>
+                            </div>
+                            <div class="menu-section">
+                                <h4>Search & Sort</h4>
+                                <button onclick="openAdvancedSearch()" class="menu-item">
+                                    <i class="fas fa-search-plus"></i> Advanced Search
+                                </button>
+                                <button onclick="openSortOptions()" class="menu-item">
+                                    <i class="fas fa-sort"></i> Sort Options
+                                </button>
+                                <button onclick="openFilterSettings()" class="menu-item">
+                                    <i class="fas fa-filter"></i> Filter Settings
+                                </button>
+                            </div>
+                            <div class="menu-section">
+                                <h4>App Settings</h4>
+                                <button onclick="openAIConfig()" class="menu-item">
+                                    <i class="fas fa-robot"></i> AI Configuration
+                                </button>
+                                <button onclick="openDisplayPreferences()" class="menu-item">
+                                    <i class="fas fa-palette"></i> Display Preferences
+                                </button>
+                                <button onclick="openCollectionDefaults()" class="menu-item">
+                                    <i class="fas fa-cog"></i> Collection Defaults
+                                </button>
+                            </div>
+                            <div class="menu-section">
+                                <h4>Help & Info</h4>
+                                <button onclick="openUserGuide()" class="menu-item">
+                                    <i class="fas fa-book-open"></i> User Guide
+                                </button>
+                                <button onclick="openAbout()" class="menu-item">
+                                    <i class="fas fa-info-circle"></i> About
+                                </button>
+                                <button onclick="openVersionInfo()" class="menu-item">
+                                    <i class="fas fa-code-branch"></i> Version Info
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </header>
+
+        <!-- Search Results Section -->
+        <div id="searchResultsSection" class="search-results-section" style="display: none;">
+            <div class="search-results-header">
+                <div class="search-results-info">
+                    <span id="searchResultsCount">0 results</span>
+                    <span id="searchResultsQuery"></span>
+                </div>
+                <button id="showAllAlbumsBtn" class="show-all-btn" onclick="showAllAlbums()">
+                    <i class="fas fa-list"></i> Show All Albums
+                </button>
+            </div>
+        </div>
 
         <main class="main-content">
             <!-- Album Management Section -->
@@ -97,6 +165,115 @@
                             <div class="form-group">
                                 <label for="albumDescription">Description:</label>
                                 <textarea id="albumDescription" rows="3" placeholder="Describe what this album contains..."></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="albumCategory">Categories:</label>
+                                <div class="category-checkboxes" id="albumCategoryCheckboxes">
+                                    <div class="category-checkbox-group">
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" value="Theme Parks" class="category-checkbox">
+                                            <span class="checkmark"></span>
+                                            Theme Parks
+                                        </label>
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" value="National Parks" class="category-checkbox">
+                                            <span class="checkmark"></span>
+                                            National Parks
+                                        </label>
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" value="Historical Sites" class="category-checkbox">
+                                            <span class="checkmark"></span>
+                                            Historical Sites
+                                        </label>
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" value="Museums" class="category-checkbox">
+                                            <span class="checkmark"></span>
+                                            Museums
+                                        </label>
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" value="Zoos & Aquariums" class="category-checkbox">
+                                            <span class="checkmark"></span>
+                                            Zoos & Aquariums
+                                        </label>
+                                    </div>
+                                    <div class="category-checkbox-group">
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" value="Beaches & Coastal" class="category-checkbox">
+                                            <span class="checkmark"></span>
+                                            Beaches & Coastal
+                                        </label>
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" value="Mountains & Hiking" class="category-checkbox">
+                                            <span class="checkmark"></span>
+                                            Mountains & Hiking
+                                        </label>
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" value="Cities & Urban" class="category-checkbox">
+                                            <span class="checkmark"></span>
+                                            Cities & Urban
+                                        </label>
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" value="Small Towns" class="category-checkbox">
+                                            <span class="checkmark"></span>
+                                            Small Towns
+                                        </label>
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" value="Road Trips" class="category-checkbox">
+                                            <span class="checkmark"></span>
+                                            Road Trips
+                                        </label>
+                                    </div>
+                                    <div class="category-checkbox-group">
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" value="Vacation Destinations" class="category-checkbox">
+                                            <span class="checkmark"></span>
+                                            Vacation Destinations
+                                        </label>
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" value="Business Travel" class="category-checkbox">
+                                            <span class="checkmark"></span>
+                                            Business Travel
+                                        </label>
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" value="Family Visits" class="category-checkbox">
+                                            <span class="checkmark"></span>
+                                            Family Visits
+                                        </label>
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" value="Educational" class="category-checkbox">
+                                            <span class="checkmark"></span>
+                                            Educational
+                                        </label>
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" value="Entertainment" class="category-checkbox">
+                                            <span class="checkmark"></span>
+                                            Entertainment
+                                        </label>
+                                    </div>
+                                    <div class="category-checkbox-group">
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" value="Sports & Recreation" class="category-checkbox">
+                                            <span class="checkmark"></span>
+                                            Sports & Recreation
+                                        </label>
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" value="Cultural Events" class="category-checkbox">
+                                            <span class="checkmark"></span>
+                                            Cultural Events
+                                        </label>
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" value="Seasonal" class="category-checkbox">
+                                            <span class="checkmark"></span>
+                                            Seasonal
+                                        </label>
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" value="Other" class="category-checkbox">
+                                            <span class="checkmark"></span>
+                                            Other
+                                        </label>
+                                    </div>
+                                </div>
+                                <small>Select one or more categories to help organize and search your albums.</small>
                             </div>
                             <div class="form-group">
                                 <label for="albumTripDate">Trip Date:</label>
@@ -243,6 +420,115 @@
                             <div class="form-group">
                                 <label for="editAlbumDescription">Description:</label>
                                 <textarea id="editAlbumDescription" rows="3"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="editAlbumCategory">Categories:</label>
+                                <div class="category-checkboxes" id="editAlbumCategoryCheckboxes">
+                                    <div class="category-checkbox-group">
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" value="Theme Parks" class="category-checkbox">
+                                            <span class="checkmark"></span>
+                                            Theme Parks
+                                        </label>
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" value="National Parks" class="category-checkbox">
+                                            <span class="checkmark"></span>
+                                            National Parks
+                                        </label>
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" value="Historical Sites" class="category-checkbox">
+                                            <span class="checkmark"></span>
+                                            Historical Sites
+                                        </label>
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" value="Museums" class="category-checkbox">
+                                            <span class="checkmark"></span>
+                                            Museums
+                                        </label>
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" value="Zoos & Aquariums" class="category-checkbox">
+                                            <span class="checkmark"></span>
+                                            Zoos & Aquariums
+                                        </label>
+                                    </div>
+                                    <div class="category-checkbox-group">
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" value="Beaches & Coastal" class="category-checkbox">
+                                            <span class="checkmark"></span>
+                                            Beaches & Coastal
+                                        </label>
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" value="Mountains & Hiking" class="category-checkbox">
+                                            <span class="checkmark"></span>
+                                            Mountains & Hiking
+                                        </label>
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" value="Cities & Urban" class="category-checkbox">
+                                            <span class="checkmark"></span>
+                                            Cities & Urban
+                                        </label>
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" value="Small Towns" class="category-checkbox">
+                                            <span class="checkmark"></span>
+                                            Small Towns
+                                        </label>
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" value="Road Trips" class="category-checkbox">
+                                            <span class="checkmark"></span>
+                                            Road Trips
+                                        </label>
+                                    </div>
+                                    <div class="category-checkbox-group">
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" value="Vacation Destinations" class="category-checkbox">
+                                            <span class="checkmark"></span>
+                                            Vacation Destinations
+                                        </label>
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" value="Business Travel" class="category-checkbox">
+                                            <span class="checkmark"></span>
+                                            Business Travel
+                                        </label>
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" value="Family Visits" class="category-checkbox">
+                                            <span class="checkmark"></span>
+                                            Family Visits
+                                        </label>
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" value="Educational" class="category-checkbox">
+                                            <span class="checkmark"></span>
+                                            Educational
+                                        </label>
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" value="Entertainment" class="category-checkbox">
+                                            <span class="checkmark"></span>
+                                            Entertainment
+                                        </label>
+                                    </div>
+                                    <div class="category-checkbox-group">
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" value="Sports & Recreation" class="category-checkbox">
+                                            <span class="checkmark"></span>
+                                            Sports & Recreation
+                                        </label>
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" value="Cultural Events" class="category-checkbox">
+                                            <span class="checkmark"></span>
+                                            Cultural Events
+                                        </label>
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" value="Seasonal" class="category-checkbox">
+                                            <span class="checkmark"></span>
+                                            Seasonal
+                                        </label>
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" value="Other" class="category-checkbox">
+                                            <span class="checkmark"></span>
+                                            Other
+                                        </label>
+                                    </div>
+                                </div>
+                                <small>Select one or more categories to help organize and search your albums.</small>
                             </div>
                             <div class="form-group">
                                 <label for="editAlbumTripDate">Trip Date:</label>

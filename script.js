@@ -5,6 +5,9 @@ let currentImageData = null;
 let currentAnalysis = null;
 let isSharedView = false; // Track if we're viewing a shared album
 
+// Dark mode state
+let isDarkMode = localStorage.getItem('darkMode') === 'true';
+
 // DOM elements
 const uploadArea = document.getElementById('uploadArea');
 const imageInput = document.getElementById('imageInput');
@@ -25,10 +28,397 @@ const emptyAlbumsState = document.getElementById('emptyAlbumsState');
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
     initializeEventListeners();
+    initializeSearch();
     checkForSharedAlbum();
     renderAlbums();
     showEmptyAlbumsStateIfNeeded();
+    initializeDarkMode();
+    
+    // Set up menu event listeners (only once)
+    console.log('=== Setting up menu event listeners ===');
+    const menuToggle = document.getElementById('menuToggle');
+    console.log('Found menuToggle element:', menuToggle);
+    
+    if (menuToggle) {
+        console.log('Setting up click outside listener for menu...');
+        // Close menu when clicking outside
+        document.addEventListener('click', function(event) {
+            const menuContainer = menuToggle.closest('.menu-dropdown');
+            if (menuContainer && !menuContainer.contains(event.target)) {
+                console.log('Click outside menu detected, closing menu...');
+                menuContainer.classList.remove('active');
+                menuToggle.classList.remove('active');
+            }
+        });
+        console.log('Menu click outside listener set up successfully');
+    } else {
+        console.error('menuToggle element not found!');
+    }
+    console.log('=== Menu event listeners setup completed ===');
 });
+
+// Dark mode functions
+function initializeDarkMode() {
+    if (isDarkMode) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        updateDarkModeToggleIcon();
+    }
+}
+
+function toggleDarkMode() {
+    isDarkMode = !isDarkMode;
+    localStorage.setItem('darkMode', isDarkMode);
+    
+    if (isDarkMode) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+    } else {
+        document.documentElement.removeAttribute('data-theme');
+    }
+    
+    updateDarkModeToggleIcon();
+}
+
+function updateDarkModeToggleIcon() {
+    const toggleBtn = document.getElementById('darkModeToggle');
+    if (toggleBtn) {
+        const icon = toggleBtn.querySelector('i');
+        if (icon) {
+            icon.className = isDarkMode ? 'fas fa-sun' : 'fas fa-moon';
+        }
+    }
+}
+
+// Menu and Search Functions
+function toggleMenu() {
+    console.log('=== toggleMenu function called ===');
+    
+    const menuDropdown = document.getElementById('menuDropdown');
+    const menuToggle = document.getElementById('menuToggle');
+    
+    console.log('menuDropdown element:', menuDropdown);
+    console.log('menuToggle element:', menuToggle);
+    
+    if (!menuDropdown || !menuToggle) {
+        console.error('Menu elements not found!');
+        return;
+    }
+    
+    console.log('Current menuDropdown classes:', menuDropdown.classList.toString());
+    console.log('Current menuToggle classes:', menuToggle.classList.toString());
+    
+    // Get the parent container
+    const menuContainer = menuToggle.closest('.menu-dropdown');
+    if (!menuContainer) {
+        return;
+    }
+    
+    if (menuContainer.classList.contains('active')) {
+        console.log('Closing menu...');
+        menuContainer.classList.remove('active');
+        menuToggle.classList.remove('active');
+    } else {
+        console.log('Opening menu...');
+        // Close any other open dropdowns first
+        document.querySelectorAll('.menu-dropdown.active').forEach(dropdown => {
+            dropdown.classList.remove('active');
+        });
+        menuContainer.classList.add('active');
+        menuToggle.classList.add('active');
+    }
+    
+            console.log('After toggle - menuDropdown classes:', menuDropdown.classList.toString());
+        console.log('After toggle - menuToggle classes:', menuToggle.classList.toString());
+        
+        // Check if the menu is actually visible
+        const computedStyle = window.getComputedStyle(menuDropdown);
+        console.log('Menu display style:', computedStyle.display);
+        console.log('Menu visibility style:', computedStyle.visibility);
+        console.log('Menu opacity style:', computedStyle.opacity);
+        console.log('Menu z-index style:', computedStyle.zIndex);
+        
+        console.log('=== toggleMenu function completed ===');
+}
+
+// Menu event listener will be set up in initializeEventListeners
+
+// Search functionality
+function initializeSearch() {
+    const searchInput = document.getElementById('searchInput');
+    const clearSearchBtn = document.getElementById('clearSearchBtn');
+    
+    if (searchInput) {
+        searchInput.addEventListener('input', performSearch);
+        searchInput.addEventListener('keyup', function(event) {
+            if (event.key === 'Escape') {
+                clearSearch();
+            }
+        });
+    }
+    
+    if (clearSearchBtn) {
+        clearSearchBtn.addEventListener('click', clearSearch);
+    }
+}
+
+function performSearch() {
+    const searchInput = document.getElementById('searchInput');
+    const searchTerm = searchInput.value.trim().toLowerCase();
+    const clearSearchBtn = document.getElementById('clearSearchBtn');
+    const searchResultsSection = document.getElementById('searchResultsSection');
+    
+    if (searchTerm.length === 0) {
+        clearSearch();
+        return;
+    }
+    
+    // Show clear button
+    clearSearchBtn.style.display = 'block';
+    
+            // Perform search across albums with match details
+        const searchResults = albums.map(album => {
+            // Handle both old single category and new multiple categories
+            const albumCategories = album.categories || (album.category ? [album.category] : []);
+            const categoryMatch = albumCategories.some(cat => cat.toLowerCase().includes(searchTerm));
+            
+            const matches = {
+                name: album.name.toLowerCase().includes(searchTerm),
+                description: album.description && album.description.toLowerCase().includes(searchTerm),
+                categories: categoryMatch,
+                location: album.location && album.location.toLowerCase().includes(searchTerm),
+                pennies: album.pennies.filter(penny => 
+                    penny.description && penny.description.toLowerCase().includes(searchTerm)
+                )
+            };
+            
+            const hasMatches = matches.name || matches.description || matches.categories || matches.location || matches.pennies.length > 0;
+            
+            return hasMatches ? { ...album, searchMatches: matches, searchTerm } : null;
+        }).filter(Boolean);
+    
+    // Update search results display
+    updateSearchResults(searchResults, searchTerm);
+    
+    // Filter albums grid
+    renderFilteredAlbums(searchResults);
+}
+
+function updateSearchResults(results, query) {
+    const searchResultsSection = document.getElementById('searchResultsSection');
+    const searchResultsCount = document.getElementById('searchResultsCount');
+    const searchResultsQuery = document.getElementById('searchResultsQuery');
+    
+    if (results.length > 0) {
+        searchResultsCount.textContent = `${results.length} result${results.length === 1 ? '' : 's'}`;
+        searchResultsQuery.textContent = `for "${query}"`;
+        searchResultsSection.style.display = 'block';
+    } else {
+        searchResultsCount.textContent = 'No results found';
+        searchResultsQuery.textContent = `for "${query}"`;
+        searchResultsSection.style.display = 'block';
+    }
+}
+
+function renderFilteredAlbums(filteredAlbums) {
+    const albumsGrid = document.getElementById('albumsGrid');
+    
+    if (filteredAlbums.length === 0) {
+        albumsGrid.innerHTML = `
+            <div class="empty-search-state">
+                <i class="fas fa-search"></i>
+                <h3>No albums found</h3>
+                <p>Try adjusting your search terms or browse all albums.</p>
+            </div>
+        `;
+    } else {
+        renderAlbumsWithSearchHighlights(filteredAlbums);
+    }
+}
+
+function renderAlbums() {
+    if (albums.length === 0) {
+        albumsGrid.style.display = 'none';
+        emptyAlbumsState.style.display = 'block';
+        return;
+    }
+    
+    albumsGrid.style.display = 'grid';
+    emptyAlbumsState.style.display = 'none';
+    
+    albumsGrid.innerHTML = albums.map(album => {
+        const hasCover = album.imageUrl && album.imageUrl.length > 0;
+        const coverStyle = hasCover ? ` style="--album-cover-url: url('${album.imageUrl.replace(/"/g, '\\"')}')"` : '';
+        return `
+        <div class="album-card${hasCover ? ' has-cover' : ''}" data-album-id="${album.id}"${coverStyle} onclick="openAlbumView('${album.id}')">
+            ${hasCover ? '<div class=\"album-cover\"></div>' : ''}
+            <div class="album-content">
+                <div class="album-header">
+                    <h3 class="album-title">${album.name}</h3>
+                </div>
+                <p class="album-description">${album.description || 'No description'}</p>
+                <div class="album-stats">
+                    <span class="album-date">${album.tripDate ? `Trip: ${new Date(album.tripDate).toLocaleDateString()}` : 'No trip date set'}</span>
+                    <span class="penny-count">
+                        <i class="fas fa-coins"></i> ${album.pennies.length} ${album.pennies.length === 1 ? 'penny' : 'pennies'}
+                    </span>
+                </div>
+                ${album.location ? `<div class="album-location">
+                    <i class="fas fa-map-marker-alt"></i> 
+                    ${(album.locationUrl && album.locationUrl.trim()) ? `<a href="${album.locationUrl}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();" title="Open location in new window">${album.location}</a>` : album.location}
+                </div>` : ''}
+                <div class="album-actions">
+                    <button class="album-action-btn delete-btn" onclick="event.stopPropagation(); deleteAlbum('${album.id}')" title="Delete Album">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function renderAlbumsWithSearchHighlights(filteredAlbums) {
+    if (filteredAlbums.length === 0) {
+        albumsGrid.style.display = 'none';
+        emptyAlbumsState.style.display = 'block';
+        return;
+    }
+    
+    albumsGrid.style.display = 'grid';
+    emptyAlbumsState.style.display = 'none';
+    
+    albumsGrid.innerHTML = filteredAlbums.map(album => {
+        const hasCover = album.imageUrl && album.imageUrl.length > 0;
+        const coverStyle = hasCover ? ` style="--album-cover-url: url('${album.imageUrl.replace(/"/g, '\\"')}')"` : '';
+        const searchTerm = album.searchTerm || '';
+        const matches = album.searchMatches || {};
+        
+        // Highlight matching text
+        const highlightedName = highlightSearchTerm(album.name, searchTerm);
+        const highlightedDescription = album.description ? highlightSearchTerm(album.description, searchTerm) : 'No description';
+        
+        // Handle both old single category and new multiple categories for highlighting
+        const albumCategories = album.categories || (album.category ? [album.category] : []);
+        const highlightedCategories = albumCategories.length > 0 ? 
+            albumCategories.map(cat => highlightSearchTerm(cat, searchTerm)).join(', ') : '';
+        
+        const highlightedLocation = album.location ? highlightSearchTerm(album.location, searchTerm) : '';
+        
+        // Create match indicators
+        const matchIndicators = [];
+        if (matches.name) matchIndicators.push('<span class="match-indicator name-match"><i class="fas fa-tag"></i> Name</span>');
+        if (matches.description) matchIndicators.push('<span class="match-indicator desc-match"><i class="fas fa-align-left"></i> Description</span>');
+        if (matches.categories) matchIndicators.push('<span class="match-indicator cat-match"><i class="fas fa-folder"></i> Categories</span>');
+        if (matches.location) matchIndicators.push('<span class="match-indicator loc-match"><i class="fas fa-map-marker-alt"></i> Location</span>');
+        if (matches.pennies && matches.pennies.length > 0) {
+            matchIndicators.push(`<span class="match-indicator penny-match"><i class="fas fa-coins"></i> ${matches.pennies.length} Penny${matches.pennies.length === 1 ? '' : 'ies'}</span>`);
+        }
+        
+        return `
+        <div class="album-card search-result${hasCover ? ' has-cover' : ''}" data-album-id="${album.id}"${coverStyle} onclick="openAlbumView('${album.id}')">
+            ${hasCover ? '<div class=\"album-cover\"></div>' : ''}
+            <div class="album-content">
+                <div class="album-header">
+                    <h3 class="album-title">${highlightedName}</h3>
+                    ${matchIndicators.length > 0 ? `<div class="search-match-indicators">${matchIndicators.join('')}</div>` : ''}
+                </div>
+                <p class="album-description">${highlightedDescription}</p>
+                <div class="album-stats">
+                    <span class="album-date">${album.tripDate ? `Trip: ${new Date(album.tripDate).toLocaleDateString()}` : 'No trip date set'}</span>
+                    <span class="penny-count">
+                        <i class="fas fa-coins"></i> ${album.pennies.length} ${album.pennies.length === 1 ? 'penny' : 'pennies'}
+                    </span>
+                </div>
+                ${highlightedLocation ? `<div class="album-location">
+                    <i class="fas fa-map-marker-alt"></i> 
+                    ${(album.locationUrl && album.locationUrl.trim()) ? `<a href="${album.locationUrl}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();" title="Open location in new window">${highlightedLocation}</a>` : highlightedLocation}
+                </div>` : ''}
+                <div class="album-actions">
+                    <button class="album-action-btn delete-btn" onclick="event.stopPropagation(); deleteAlbum('${album.id}')" title="Delete Album">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function clearSearch() {
+    const searchInput = document.getElementById('searchInput');
+    const clearSearchBtn = document.getElementById('clearSearchBtn');
+    const searchResultsSection = document.getElementById('searchResultsSection');
+    
+    searchInput.value = '';
+    clearSearchBtn.style.display = 'none';
+    searchResultsSection.style.display = 'none';
+    
+    // Show all albums
+    renderAlbums();
+}
+
+function populateCategoryCheckboxes(containerSelector, selectedCategories) {
+    const container = document.querySelector(containerSelector);
+    if (!container) return;
+    
+    // Clear all checkboxes first
+    const checkboxes = container.querySelectorAll('.category-checkbox');
+    checkboxes.forEach(cb => cb.checked = false);
+    
+    // Check the ones that match selected categories
+    if (selectedCategories && selectedCategories.length > 0) {
+        checkboxes.forEach(cb => {
+            if (selectedCategories.includes(cb.value)) {
+                cb.checked = true;
+            }
+        });
+    }
+}
+
+function showAllAlbums() {
+    clearSearch();
+}
+
+function highlightSearchTerm(text, searchTerm) {
+    if (!searchTerm || !text) return text;
+    
+    const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    return text.replace(regex, '<mark class="search-highlight">$1</mark>');
+}
+
+// Menu action functions (placeholder implementations)
+function openAdvancedSearch() {
+    showNotification('Advanced search feature coming soon!', 'info');
+}
+
+function openSortOptions() {
+    showNotification('Sort options feature coming soon!', 'info');
+}
+
+function openFilterSettings() {
+    showNotification('Filter settings feature coming soon!', 'info');
+}
+
+function openAIConfig() {
+    showNotification('AI configuration feature coming soon!', 'info');
+}
+
+function openDisplayPreferences() {
+    showNotification('Display preferences feature coming soon!', 'info');
+}
+
+function openCollectionDefaults() {
+    showNotification('Collection defaults feature coming soon!', 'info');
+}
+
+function openUserGuide() {
+    showNotification('User guide feature coming soon!', 'info');
+}
+
+function openAbout() {
+    showNotification('About feature coming soon!', 'info');
+}
+
+function openVersionInfo() {
+    showNotification('Version info feature coming soon!', 'info');
+}
 
 // Event listeners setup
 function initializeEventListeners() {
@@ -55,6 +445,8 @@ function initializeEventListeners() {
             openEditModal();
         }
     });
+
+    // Menu event listeners will be set up separately
 }
 
 // URL Sharing Functions
@@ -662,16 +1054,24 @@ function closeModal() {
 function openCreateAlbumModal() {
     createAlbumModal.style.display = 'block';
     document.getElementById('albumName').focus();
+    
+    // Clear form and category checkboxes
+    document.getElementById('createAlbumForm').reset();
+    populateCategoryCheckboxes('#albumCategoryCheckboxes', []);
 }
 
 function closeCreateAlbumModal() {
     createAlbumModal.style.display = 'none';
     document.getElementById('createAlbumForm').reset();
+    
+    // Clear category checkboxes
+    populateCategoryCheckboxes('#albumCategoryCheckboxes', []);
 }
 
 function createAlbum() {
     const name = document.getElementById('albumName').value.trim();
     const description = document.getElementById('albumDescription').value.trim();
+    const categoryCheckboxes = document.querySelectorAll('#albumCategoryCheckboxes .category-checkbox:checked');
     const tripDate = document.getElementById('albumTripDate').value;
     const location = document.getElementById('albumLocation').value.trim();
     const locationUrl = (document.getElementById('albumLocationUrl')?.value || '').trim();
@@ -682,10 +1082,18 @@ function createAlbum() {
         return;
     }
     
+    if (categoryCheckboxes.length === 0) {
+        showNotification('Please select at least one category', 'error');
+        return;
+    }
+    
+    const categories = Array.from(categoryCheckboxes).map(cb => cb.value);
+    
     const newAlbum = {
         id: Date.now().toString(),
         name: name,
         description: description,
+        categories: categories,
         tripDate: tripDate,
         location: location,
         locationUrl: locationUrl,
@@ -700,47 +1108,6 @@ function createAlbum() {
     renderAlbums();
     closeCreateAlbumModal();
     showNotification('Album created successfully!', 'success');
-}
-
-function renderAlbums() {
-    if (albums.length === 0) {
-        albumsGrid.style.display = 'none';
-        emptyAlbumsState.style.display = 'block';
-        return;
-    }
-    
-    albumsGrid.style.display = 'grid';
-    emptyAlbumsState.style.display = 'none';
-    
-    albumsGrid.innerHTML = albums.map(album => {
-        const hasCover = album.imageUrl && album.imageUrl.length > 0;
-        const coverStyle = hasCover ? ` style="--album-cover-url: url('${album.imageUrl.replace(/"/g, '\\"')}')"` : '';
-        return `
-        <div class="album-card${hasCover ? ' has-cover' : ''}" data-album-id="${album.id}"${coverStyle} onclick="openAlbumView('${album.id}')">
-            ${hasCover ? '<div class=\"album-cover\"></div>' : ''}
-            <div class="album-content">
-                <div class="album-header">
-                    <h3 class="album-title">${album.name}</h3>
-                </div>
-                <p class="album-description">${album.description || 'No description'}</p>
-                <div class="album-stats">
-                    <span class="album-date">${album.tripDate ? `Trip: ${new Date(album.tripDate).toLocaleDateString()}` : 'No trip date set'}</span>
-                    <span class="penny-count">
-                        <i class="fas fa-coins"></i> ${album.pennies.length} ${album.pennies.length === 1 ? 'penny' : 'pennies'}
-                    </span>
-                </div>
-                ${album.location ? `<div class="album-location">
-                    <i class="fas fa-map-marker-alt"></i> 
-                    ${(album.locationUrl && album.locationUrl.trim()) ? `<a href="${album.locationUrl}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();" title="Open location in new window">${album.location}</a>` : album.location}
-                </div>` : ''}
-                <div class="album-actions">
-                    <button class="album-action-btn delete-btn" onclick="event.stopPropagation(); deleteAlbum('${album.id}')" title="Delete Album">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-            </div>
-        </div>`;
-    }).join('');
 }
 
 function openAlbumView(albumId) {
@@ -853,9 +1220,17 @@ function renderAlbumPennies() {
 function editCurrentAlbum() {
     if (!currentAlbum) return;
     
+    // Clear form first
+    document.getElementById('editAlbumForm').reset();
+    
     // Store current album and populate form
     document.getElementById('editAlbumName').value = currentAlbum.name || '';
     document.getElementById('editAlbumDescription').value = currentAlbum.description || '';
+    
+    // Handle categories - support both old single category and new multiple categories
+    const categories = currentAlbum.categories || (currentAlbum.category ? [currentAlbum.category] : []);
+    populateCategoryCheckboxes('#editAlbumCategoryCheckboxes', categories);
+    
     document.getElementById('editAlbumTripDate').value = currentAlbum.tripDate || '';
     document.getElementById('editAlbumLocation').value = currentAlbum.location || '';
     document.getElementById('editAlbumLocationUrl').value = currentAlbum.locationUrl || '';
@@ -869,10 +1244,18 @@ function editAlbum(albumId) {
     const album = albums.find(a => a.id === albumId);
     if (!album) return;
     
+    // Clear form first
+    document.getElementById('editAlbumForm').reset();
+    
     // Store current album and populate form
     currentAlbum = album;
     document.getElementById('editAlbumName').value = album.name || '';
     document.getElementById('editAlbumDescription').value = album.description || '';
+    
+    // Handle categories - support both old single category and new multiple categories
+    const categories = album.categories || (album.category ? [album.category] : []);
+    populateCategoryCheckboxes('#editAlbumCategoryCheckboxes', categories);
+    
     document.getElementById('editAlbumTripDate').value = album.tripDate || '';
     document.getElementById('editAlbumLocation').value = album.location || '';
     document.getElementById('editAlbumLocationUrl').value = album.locationUrl || '';
@@ -885,6 +1268,9 @@ function editAlbum(albumId) {
 function closeEditAlbumModal() {
     editAlbumModal.style.display = 'none';
     editAlbumModal.dataset.albumId = '';
+    
+    // Clear category checkboxes
+    populateCategoryCheckboxes('#editAlbumCategoryCheckboxes', []);
 }
 
 function openAddPennyModal() {
@@ -922,12 +1308,25 @@ function saveAlbumEdit() {
     
     const name = document.getElementById('editAlbumName').value.trim();
     const description = document.getElementById('editAlbumDescription').value.trim();
+    const categoryCheckboxes = document.querySelectorAll('#editAlbumCategoryCheckboxes .category-checkbox:checked');
     const tripDate = document.getElementById('editAlbumTripDate').value;
     const location = document.getElementById('editAlbumLocation').value.trim();
     const locationUrl = (document.getElementById('editAlbumLocationUrl').value || '').trim();
     const imageUrl = (document.getElementById('editAlbumImageUrl').value || '').trim();
     
-    Object.assign(album, { name, description, tripDate, location, locationUrl, imageUrl });
+    if (!name) {
+        showNotification('Please enter an album name', 'error');
+        return;
+    }
+    
+    if (categoryCheckboxes.length === 0) {
+        showNotification('Please select at least one category', 'error');
+        return;
+    }
+    
+    const categories = Array.from(categoryCheckboxes).map(cb => cb.value);
+    
+    Object.assign(album, { name, description, categories, tripDate, location, locationUrl, imageUrl });
     album.updatedAt = new Date().toISOString();
     saveAlbumsToStorage();
     renderAlbums();
@@ -1098,6 +1497,7 @@ function saveAlbumsToStorage() {
                     id: album.id,
                     name: album.name,
                     description: album.description,
+                    category: album.category,
                     tripDate: album.tripDate,
                     location: album.location,
                     imageUrl: album.imageUrl,
@@ -1172,17 +1572,32 @@ function showEmptyAlbumsStateIfNeeded() {
 
 // Export/Backup function to prevent data loss
 function exportAlbums() {
+    // Prompt user for custom filename
+    const defaultName = `penny-collection-backup-${new Date().toISOString().split('T')[0]}`;
+    const customName = prompt('Enter a name for your backup file:', defaultName);
+    
+    // If user cancels, don't export
+    if (customName === null) {
+        return;
+    }
+    
+    // Clean the filename (remove invalid characters)
+    const cleanName = customName.replace(/[<>:"/\\|?*]/g, '_').trim();
+    
+    // If user entered empty string, use default
+    const finalName = cleanName || defaultName;
+    
     const dataStr = JSON.stringify(albums, null, 2);
     const dataBlob = new Blob([dataStr], {type: 'application/json'});
     const url = URL.createObjectURL(dataBlob);
     
     const link = document.createElement('a');
     link.href = url;
-    link.download = `penny-collection-backup-${new Date().toISOString().split('T')[0]}.json`;
+    link.download = `${finalName}.json`;
     link.click();
     
     URL.revokeObjectURL(url);
-    showNotification('Album backup exported successfully!', 'success');
+    showNotification(`Backup exported as "${finalName}.json"!`, 'success');
 }
 
 // Import function to restore data
@@ -1238,3 +1653,39 @@ window.addEventListener('click', function(event) {
     }
 });
 
+// Menu item functions
+function openAdvancedSearch() {
+    showNotification('Advanced Search - Coming Soon!', 'info');
+}
+
+function openSortOptions() {
+    showNotification('Sort Options - Coming Soon!', 'info');
+}
+
+function openFilterSettings() {
+    showNotification('Filter Settings - Coming Soon!', 'info');
+}
+
+function openAIConfig() {
+    showNotification('AI Configuration - Coming Soon!', 'info');
+}
+
+function openDisplayPreferences() {
+    showNotification('Display Preferences - Coming Soon!', 'info');
+}
+
+function openCollectionDefaults() {
+    showNotification('Collection Defaults - Coming Soon!', 'info');
+}
+
+function openUserGuide() {
+    showNotification('User Guide - Coming Soon!', 'info');
+}
+
+function openAbout() {
+    showNotification('About - Coming Soon!', 'info');
+}
+
+function openVersionInfo() {
+    showNotification('Version Info - Coming Soon!', 'info');
+}
