@@ -115,7 +115,7 @@ body {
     flex-wrap: wrap;
 }
 
-.backup-btn, .restore-btn {
+.backup-btn, .restore-btn, .create-album-btn {
     background: #8b4513;
     color: white;
     border: none;
@@ -130,26 +130,10 @@ body {
     gap: 8px;
 }
 
-.backup-btn:hover, .restore-btn:hover {
+.backup-btn:hover, .restore-btn:hover, .create-album-btn:hover {
     background: #654321;
     transform: translateY(-2px);
     box-shadow: 0 4px 15px rgba(139, 69, 19, 0.3);
-}
-
-.backup-btn {
-    background: #51cf66;
-}
-
-.backup-btn:hover {
-    background: #40c057;
-}
-
-.restore-btn {
-    background: #667eea;
-}
-
-.restore-btn:hover {
-    background: #5a67d8;
 }
 
 /* Main Content */
@@ -754,26 +738,7 @@ body {
     color: #2d3748;
 }
 
-.create-album-btn {
-    background: #8b4513;
-    color: white;
-    border: none;
-    padding: 12px 24px;
-    border-radius: 8px;
-    font-size: 0.9rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
 
-.create-album-btn:hover {
-    background: #654321;
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(139, 69, 19, 0.3);
-}
 
 .albums-grid {
     display: grid;

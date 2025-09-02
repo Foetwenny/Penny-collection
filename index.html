@@ -51,6 +51,9 @@
                     <button class="restore-btn" onclick="importAlbums()" title="Import Backup">
                         <i class="fas fa-upload"></i> Restore
                     </button>
+                    <button id="createAlbumBtn" class="create-album-btn" onclick="openCreateAlbumModal()">
+                        <i class="fas fa-plus"></i> Create New Album
+                    </button>
                 </div>
             </div>
         </header>
@@ -60,9 +63,6 @@
             <section class="album-section">
                 <div class="album-header">
                     <h2><i class="fas fa-book"></i> Your Albums</h2>
-                    <button class="create-album-btn" id="createAlbumBtn">
-                        <i class="fas fa-plus"></i> Create New Album
-                    </button>
                 </div>
                 
                 <div class="albums-grid" id="albumsGrid">

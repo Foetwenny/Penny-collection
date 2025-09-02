@@ -729,9 +729,6 @@ function renderAlbums() {
                 </div>
                 ${album.location ? `<div class="album-location"><i class="fas fa-map-marker-alt"></i> ${album.location}</div>` : ''}
                 <div class="album-actions">
-                    <button class="album-action-btn share-btn" onclick="event.stopPropagation(); openShareModal('${album.id}')" title="Share Album">
-                        <i class="fas fa-share-alt"></i>
-                    </button>
                     <button class="album-action-btn delete-btn" onclick="event.stopPropagation(); deleteAlbum('${album.id}')" title="Delete Album">
                         <i class="fas fa-trash"></i>
                     </button>
