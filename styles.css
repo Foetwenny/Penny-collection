@@ -868,6 +868,19 @@ body {
     font-size: 0.8rem;
 }
 
+.album-location a {
+    color: inherit;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    border-bottom: 1px solid transparent;
+}
+
+.album-location a:hover {
+    color: #8b4513;
+    border-bottom-color: #8b4513;
+    text-decoration: none;
+}
+
 .album-actions {
     position: absolute;
     top: 12px;
@@ -1142,6 +1155,22 @@ body {
 
 .album-info-content {
     padding: 25px 30px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 50%, #f1f3f4 100%);
+    position: relative;
+}
+
+.album-info-content::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: 
+        radial-gradient(circle at 25% 75%, rgba(139, 69, 19, 0.03) 0%, transparent 50%),
+        radial-gradient(circle at 75% 25%, rgba(139, 69, 19, 0.03) 0%, transparent 50%),
+        linear-gradient(45deg, transparent 40%, rgba(255, 255, 255, 0.08) 50%, transparent 60%);
+    pointer-events: none;
 }
 
 .album-view-content .add-penny-section {
@@ -1163,11 +1192,26 @@ body {
 }
 
 .album-view-content .album-pennies {
-    background: white;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 50%, #f1f3f4 100%);
     border-radius: 15px;
     padding: 25px;
     box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
     border: 2px solid #8b4513;
+    position: relative;
+}
+
+.album-view-content .album-pennies::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: 
+        radial-gradient(circle at 25% 75%, rgba(139, 69, 19, 0.03) 0%, transparent 50%),
+        radial-gradient(circle at 75% 25%, rgba(139, 69, 19, 0.03) 0%, transparent 50%),
+        linear-gradient(45deg, transparent 40%, rgba(255, 255, 255, 0.08) 50%, transparent 60%);
+    pointer-events: none;
 }
 
 .album-view-content h4 {
@@ -1186,7 +1230,7 @@ body {
 }
 
 .album-view-content .penny-item {
-    background: #f8f9fa;
+    background: white;
     border-radius: 12px;
     padding: 20px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);

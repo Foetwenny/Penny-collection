@@ -674,6 +674,7 @@ function createAlbum() {
     const description = document.getElementById('albumDescription').value.trim();
     const tripDate = document.getElementById('albumTripDate').value;
     const location = document.getElementById('albumLocation').value.trim();
+    const locationUrl = (document.getElementById('albumLocationUrl')?.value || '').trim();
     const imageUrl = (document.getElementById('albumImageUrl')?.value || '').trim();
     
     if (!name) {
@@ -687,6 +688,7 @@ function createAlbum() {
         description: description,
         tripDate: tripDate,
         location: location,
+        locationUrl: locationUrl,
         imageUrl: imageUrl,
         pennies: [],
         createdAt: new Date().toISOString(),
@@ -727,7 +729,10 @@ function renderAlbums() {
                         <i class="fas fa-coins"></i> ${album.pennies.length} ${album.pennies.length === 1 ? 'penny' : 'pennies'}
                     </span>
                 </div>
-                ${album.location ? `<div class="album-location"><i class="fas fa-map-marker-alt"></i> ${album.location}</div>` : ''}
+                ${album.location ? `<div class="album-location">
+                    <i class="fas fa-map-marker-alt"></i> 
+                    ${(album.locationUrl && album.locationUrl.trim()) ? `<a href="${album.locationUrl}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();" title="Open location in new window">${album.location}</a>` : album.location}
+                </div>` : ''}
                 <div class="album-actions">
                     <button class="album-action-btn delete-btn" onclick="event.stopPropagation(); deleteAlbum('${album.id}')" title="Delete Album">
                         <i class="fas fa-trash"></i>
@@ -853,6 +858,7 @@ function editCurrentAlbum() {
     document.getElementById('editAlbumDescription').value = currentAlbum.description || '';
     document.getElementById('editAlbumTripDate').value = currentAlbum.tripDate || '';
     document.getElementById('editAlbumLocation').value = currentAlbum.location || '';
+    document.getElementById('editAlbumLocationUrl').value = currentAlbum.locationUrl || '';
     document.getElementById('editAlbumImageUrl').value = currentAlbum.imageUrl || '';
     
     editAlbumModal.dataset.albumId = currentAlbum.id;
@@ -869,6 +875,7 @@ function editAlbum(albumId) {
     document.getElementById('editAlbumDescription').value = album.description || '';
     document.getElementById('editAlbumTripDate').value = album.tripDate || '';
     document.getElementById('editAlbumLocation').value = album.location || '';
+    document.getElementById('editAlbumLocationUrl').value = album.locationUrl || '';
     document.getElementById('editAlbumImageUrl').value = album.imageUrl || '';
     
     editAlbumModal.dataset.albumId = album.id;
@@ -917,9 +924,10 @@ function saveAlbumEdit() {
     const description = document.getElementById('editAlbumDescription').value.trim();
     const tripDate = document.getElementById('editAlbumTripDate').value;
     const location = document.getElementById('editAlbumLocation').value.trim();
+    const locationUrl = (document.getElementById('editAlbumLocationUrl').value || '').trim();
     const imageUrl = (document.getElementById('editAlbumImageUrl').value || '').trim();
     
-    Object.assign(album, { name, description, tripDate, location, imageUrl });
+    Object.assign(album, { name, description, tripDate, location, locationUrl, imageUrl });
     album.updatedAt = new Date().toISOString();
     saveAlbumsToStorage();
     renderAlbums();
