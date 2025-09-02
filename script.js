@@ -5,6 +5,9 @@ let currentImageData = null;
 let currentAnalysis = null;
 let isSharedView = false; // Track if we're viewing a shared album
 
+// Collection name
+let collectionName = localStorage.getItem('collectionName') || 'Your Albums';
+
 // Dark mode state
 let isDarkMode = localStorage.getItem('darkMode') === 'true';
 
@@ -34,6 +37,7 @@ document.addEventListener('DOMContentLoaded', function() {
     showEmptyAlbumsStateIfNeeded();
     initializeDarkMode();
     initializeSortEventListeners();
+    updateCollectionNameDisplay();
     
     // Apply default sort
     const currentSort = getCurrentSortSettings();
@@ -2018,7 +2022,15 @@ function exportAlbums() {
     // If user entered empty string, use default
     const finalName = cleanName || defaultName;
     
-    const dataStr = JSON.stringify(albums, null, 2);
+    // Include collection name in export data
+    const exportData = {
+        collectionName: collectionName,
+        albums: albums,
+        exportDate: new Date().toISOString(),
+        version: "1.0"
+    };
+    
+    const dataStr = JSON.stringify(exportData, null, 2);
     const dataBlob = new Blob([dataStr], {type: 'application/json'});
     const url = URL.createObjectURL(dataBlob);
     
@@ -2043,11 +2055,30 @@ function importAlbums() {
             const reader = new FileReader();
             reader.onload = function(e) {
                 try {
-                    const importedAlbums = JSON.parse(e.target.result);
-                    albums = importedAlbums;
+                    const importedData = JSON.parse(e.target.result);
+                    
+                    // Handle both old format (just albums array) and new format (with collection name)
+                    if (Array.isArray(importedData)) {
+                        // Old format - just albums
+                        albums = importedData;
+                        showNotification('Albums imported successfully!', 'success');
+                    } else if (importedData.albums && Array.isArray(importedData.albums)) {
+                        // New format - with collection name and metadata
+                        albums = importedData.albums;
+                        
+                        // Import collection name if it exists
+                        if (importedData.collectionName) {
+                            setCollectionName(importedData.collectionName);
+                            showNotification(`Collection "${importedData.collectionName}" imported successfully!`, 'success');
+                        } else {
+                            showNotification('Albums imported successfully!', 'success');
+                        }
+                    } else {
+                        throw new Error('Invalid format');
+                    }
+                    
                     saveAlbumsToStorage();
                     renderAlbums();
-                    showNotification('Albums imported successfully!', 'success');
                 } catch (error) {
                     showNotification('Invalid backup file. Please try again.', 'error');
                 }
@@ -2087,6 +2118,9 @@ window.addEventListener('click', function(event) {
     }
     if (event.target.id === 'sortOptionsModal') {
         closeSortOptionsModal();
+    }
+    if (event.target.id === 'collectionSettingsModal') {
+        closeCollectionSettingsModal();
     }
 });
 
@@ -2234,4 +2268,84 @@ function openAbout() {
 
 function openVersionInfo() {
     showNotification('Version Info - Coming Soon!', 'info');
+}
+
+// Collection name functions
+function updateCollectionNameDisplay() {
+    const collectionNameElement = document.getElementById('collectionNameDisplay');
+    if (collectionNameElement) {
+        collectionNameElement.textContent = collectionName;
+    }
+}
+
+function setCollectionName(newName) {
+    collectionName = newName.trim() || 'Your Albums';
+    localStorage.setItem('collectionName', collectionName);
+    updateCollectionNameDisplay();
+}
+
+function openCollectionSettings() {
+    const currentName = collectionName;
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.id = 'collectionSettingsModal';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Collection Settings</h3>
+                <button class="close-btn" onclick="closeCollectionSettingsModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="collectionNameInput">Collection Name:</label>
+                    <input type="text" id="collectionNameInput" value="${currentName}" placeholder="Your Albums" maxlength="50">
+                    <small>This name will appear at the top of your album collection and will be included when you export/share your collection.</small>
+                </div>
+                <div class="form-group">
+                    <h4>Quick Options:</h4>
+                    <div class="quick-options">
+                        <button class="quick-option-btn" onclick="setQuickName('My Collection')">My Collection</button>
+                        <button class="quick-option-btn" onclick="setQuickName('Penny Adventures')">Penny Adventures</button>
+                        <button class="quick-option-btn" onclick="setQuickName('Travel Memories')">Travel Memories</button>
+                        <button class="quick-option-btn" onclick="setQuickName('Your Albums')">Your Albums</button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="cancel-btn" onclick="closeCollectionSettingsModal()">Cancel</button>
+                <button class="save-btn" onclick="saveCollectionSettings()">Save</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    modal.style.display = 'block';
+    document.getElementById('collectionNameInput').focus();
+}
+
+function closeCollectionSettingsModal() {
+    const modal = document.getElementById('collectionSettingsModal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+function setQuickName(name) {
+    document.getElementById('collectionNameInput').value = name;
+}
+
+function saveCollectionSettings() {
+    const nameInput = document.getElementById('collectionNameInput');
+    const newName = nameInput.value.trim();
+    
+    if (newName.length === 0) {
+        showNotification('Collection name cannot be empty', 'error');
+        return;
+    }
+    
+    setCollectionName(newName);
+    closeCollectionSettingsModal();
+    showNotification('Collection settings saved!', 'success');
 }

@@ -2363,3 +2363,44 @@ body {
     margin-top: 8px;
     line-height: 1.4;
 }
+
+/* Collection Settings Modal Styles */
+.quick-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.quick-option-btn {
+    padding: 6px 12px;
+    border: 1px solid var(--border-secondary);
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    border-radius: 15px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.85rem;
+}
+
+.quick-option-btn:hover {
+    background: var(--bg-tertiary);
+    border-color: var(--accent-primary);
+    color: var(--text-primary);
+}
+
+#collectionNameInput {
+    width: 100%;
+    padding: 10px;
+    border: 2px solid var(--border-secondary);
+    border-radius: 8px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 1rem;
+    transition: border-color 0.3s ease;
+}
+
+#collectionNameInput:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+}
