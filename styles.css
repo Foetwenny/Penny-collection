@@ -963,6 +963,25 @@ body {
     background: var(--accent-secondary);
 }
 
+.delete-album-btn {
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.delete-album-btn:hover {
+    background: #c82333;
+}
+
 .modal-header h3 {
     font-size: 1.5rem;
     color: var(--text-primary);

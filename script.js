@@ -302,11 +302,6 @@ function renderAlbums() {
                     <i class="fas fa-map-marker-alt"></i> 
                     ${(album.locationUrl && album.locationUrl.trim()) ? `<a href="${album.locationUrl}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();" title="Open location in new window">${album.location}</a>` : album.location}
                 </div>` : ''}
-                <div class="album-actions">
-                    <button class="album-action-btn delete-btn" onclick="event.stopPropagation(); deleteAlbum('${album.id}')" title="Delete Album">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
             </div>
         </div>`;
     }).join('');
@@ -379,11 +374,6 @@ function renderAlbumsWithSearchHighlights(filteredAlbums) {
                     <i class="fas fa-map-marker-alt"></i> 
                     ${(album.locationUrl && album.locationUrl.trim()) ? `<a href="${album.locationUrl}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();" title="Open location in new window">${highlightedLocation}</a>` : highlightedLocation}
                 </div>` : ''}
-                <div class="album-actions">
-                    <button class="album-action-btn delete-btn" onclick="event.stopPropagation(); deleteAlbum('${album.id}')" title="Delete Album">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
             </div>
         </div>`;
     }).join('');
@@ -1440,6 +1430,25 @@ function closeAlbumView() {
     if (window.location.search.includes('share=')) {
         const newUrl = window.location.pathname;
         window.history.replaceState({}, document.title, newUrl);
+    }
+}
+
+function deleteCurrentAlbum() {
+    if (!currentAlbum) return;
+    
+    // Show confirmation dialog
+    if (confirm(`Are you sure you want to delete "${currentAlbum.name}"? This action cannot be undone.`)) {
+        // Delete the album
+        deleteAlbum(currentAlbum.id);
+        
+        // Close the album view
+        closeAlbumView();
+        
+        // Refresh the albums display
+        renderAlbums();
+        
+        // Show success notification
+        showNotification('Album deleted successfully!', 'success');
     }
 }
 
