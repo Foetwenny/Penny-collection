@@ -600,9 +600,7 @@ function openFilterSettings() {
     showNotification('Filter settings feature coming soon!', 'info');
 }
 
-function openAIConfig() {
-    showNotification('AI configuration feature coming soon!', 'info');
-}
+// openAIConfig function is now defined in ai-config.js
 
 function openDisplayPreferences() {
     showNotification('Display preferences feature coming soon!', 'info');
@@ -890,9 +888,26 @@ function isGoogleAIConfigured() {
 async function analyzeImage() {
     if (!currentImageData) return;
 
+    // Get user's AI configuration from localStorage, fall back to default
+    let apiKey = '';
+    let projectId = '';
+    
+    const userConfig = localStorage.getItem('userAIConfig');
+    if (userConfig) {
+        try {
+            const config = JSON.parse(userConfig);
+            apiKey = config.apiKey;
+            projectId = config.projectId;
+        } catch (e) {
+            console.error('Error parsing user AI config:', e);
+        }
+    }
+    
+    // No fallback to default - users must configure their own key
+
     // Check if API key is configured
-    if (!isGoogleAIConfigured()) {
-        showNotification('Google AI API key not configured.', 'error');
+    if (!apiKey) {
+        showNotification('Google AI API key not configured. Please go to Menu → AI Configuration to set up your API key.', 'error');
         return;
     }
 
@@ -908,7 +923,7 @@ async function analyzeImage() {
         const prompt = `Give me an interesting paragraph-size description of this elongated penny. Start with the specific location or landmark featured on it, then provide a rich, detailed description of what you see, including any text, imagery, historical context, and significance. Write in a natural, engaging style like you're telling a story about this unique souvenir.`;
 
         // Call Gemini API directly
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${window.GOOGLE_AI_CONFIG.apiKey}`, {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -1778,10 +1793,6 @@ function updateAlbum(albumId, updates) {
 }
 
 function deleteAlbum(albumId) {
-    if (!confirm('Are you sure you want to delete this album? This action cannot be undone.')) {
-        return;
-    }
-    
     const index = albums.findIndex(a => a.id === albumId);
     if (index > -1) {
         albums.splice(index, 1);
@@ -2142,9 +2153,7 @@ function openFilterSettings() {
     showNotification('Filter Settings - Coming Soon!', 'info');
 }
 
-function openAIConfig() {
-    showNotification('AI Configuration - Coming Soon!', 'info');
-}
+// openAIConfig function is now defined in ai-config.js
 
 function openDisplayPreferences() {
     showNotification('Display Preferences - Coming Soon!', 'info');
@@ -2357,4 +2366,40 @@ function saveCollectionSettings() {
     setCollectionName(newName);
     closeCollectionSettingsModal();
     showNotification('Collection settings saved!', 'success');
+}
+
+// Function to create a fresh file input element
+function createFileInput() {
+    console.log('createFileInput called'); // Debug log
+    
+    // Remove existing file input if it exists
+    if (imageInput) {
+        console.log('Removing existing imageInput'); // Debug log
+        imageInput.remove();
+    }
+    
+    // Create a new file input element
+    const newImageInput = document.createElement('input');
+    newImageInput.type = 'file';
+    newImageInput.accept = 'image/*';
+    newImageInput.style.display = 'none';
+    newImageInput.id = 'imageInput';
+    
+    // Add event listener to the new input
+    newImageInput.addEventListener('change', handleFileSelect);
+    
+    // Append to the same parent as the original
+    const parent = document.querySelector('.upload-container') || document.body;
+    parent.appendChild(newImageInput);
+    
+    // Update the global reference
+    window.imageInput = newImageInput;
+    
+    console.log('New file input created:', newImageInput); // Debug log
+    return newImageInput;
+}
+
+function handleDragOver(event) {
+    event.preventDefault();
+    uploadArea.classList.add('dragover');
 }
