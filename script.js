@@ -518,9 +518,6 @@ function highlightSearchTerm(text, searchTerm) {
 }
 
 // Menu action functions (placeholder implementations)
-function openAdvancedSearch() {
-    showNotification('Advanced search feature coming soon!', 'info');
-}
 
 function openSortOptions() {
     const modal = document.getElementById('sortOptionsModal');
@@ -707,23 +704,11 @@ function initializeSortEventListeners() {
     });
 }
 
-function openFilterSettings() {
-    showNotification('Filter settings feature coming soon!', 'info');
-}
 
 // openAIConfig function is now defined in ai-config.js
 
-function openDisplayPreferences() {
-    showNotification('Display preferences feature coming soon!', 'info');
-}
 
-function openCollectionDefaults() {
-    showNotification('Collection defaults feature coming soon!', 'info');
-}
 
-function openUserGuide() {
-    showNotification('User guide feature coming soon!', 'info');
-}
 
 function openAbout() {
     const aboutModal = document.getElementById('aboutModal');
@@ -732,9 +717,6 @@ function openAbout() {
     }
 }
 
-function openVersionInfo() {
-    showNotification('Version info feature coming soon!', 'info');
-}
 
 // Event listeners setup
 function initializeEventListeners() {
@@ -2312,9 +2294,6 @@ function testSounds() {
     showNotification('Playing sound test sequence...', 'info');
 }
 
-function openCollectionDefaults() {
-    showNotification('Collection Defaults - Coming Soon!', 'info');
-}
 
 function openUserGuide() {
     const modal = document.getElementById('userGuideModal');
