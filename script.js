@@ -5,11 +5,51 @@ let currentImageData = null;
 let currentAnalysis = null;
 let isSharedView = false; // Track if we're viewing a shared album
 
+// Helper function to format dates for date input fields (prevents timezone issues)
+function formatDateForInput(dateValue) {
+    if (!dateValue) return '';
+    
+    // If it's already a date string (YYYY-MM-DD), use it directly
+    if (typeof dateValue === 'string' && dateValue.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        return dateValue;
+    }
+    
+    // If it's a full datetime string or Date object, extract just the date part in local time
+    const date = new Date(dateValue);
+    if (isNaN(date.getTime())) return ''; // Invalid date
+    
+    return date.getFullYear() + '-' + 
+           String(date.getMonth() + 1).padStart(2, '0') + '-' + 
+           String(date.getDate()).padStart(2, '0');
+}
+
+// Helper function to safely display dates (prevents timezone issues)
+function formatDateForDisplay(dateValue) {
+    if (!dateValue) return 'No date';
+    
+    // If it's already a date string (YYYY-MM-DD), parse it as local date
+    if (typeof dateValue === 'string' && dateValue.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        const [year, month, day] = dateValue.split('-');
+        const localDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+        return localDate.toLocaleDateString();
+    }
+    
+    // For other formats, use the existing logic
+    const date = new Date(dateValue);
+    if (isNaN(date.getTime())) return 'Invalid date';
+    
+    return date.toLocaleDateString();
+}
+
 // Collection name
 let collectionName = localStorage.getItem('collectionName') || 'Your Albums';
 
 // Dark mode state
 let isDarkMode = localStorage.getItem('darkMode') === 'true';
+
+// Album image upload state
+let currentAlbumImageData = null;
+let currentEditAlbumImageData = null;
 
 // DOM elements
 const uploadArea = document.getElementById('uploadArea');
@@ -38,6 +78,8 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeDarkMode();
     initializeSortEventListeners();
     updateCollectionNameDisplay();
+    initializeAlbumImageUpload();
+    initializeEditAlbumImageUpload();
     
     // Apply default sort
     const currentSort = getCurrentSortSettings();
@@ -293,7 +335,7 @@ function renderAlbums() {
                 </div>
                 <p class="album-description">${album.description || 'No description'}</p>
                 <div class="album-stats">
-                    <span class="album-date">${album.tripDate ? `Trip: ${new Date(album.tripDate).toLocaleDateString()}` : 'No trip date set'}</span>
+                    <span class="album-date">${album.tripDate ? `Trip: ${formatDateForDisplay(album.tripDate)}` : 'No trip date set'}</span>
                     <span class="penny-count">
                         <i class="fas fa-coins"></i> ${album.pennies.length} ${album.pennies.length === 1 ? 'penny' : 'pennies'}
                     </span>
@@ -365,7 +407,7 @@ function renderAlbumsWithSearchHighlights(filteredAlbums) {
                 </div>
                 <p class="album-description">${highlightedDescription}</p>
                 <div class="album-stats">
-                    <span class="album-date">${album.tripDate ? `Trip: ${new Date(album.tripDate).toLocaleDateString()}` : 'No trip date set'}</span>
+                    <span class="album-date">${album.tripDate ? `Trip: ${formatDateForDisplay(album.tripDate)}` : 'No trip date set'}</span>
                     <span class="penny-count">
                         <i class="fas fa-coins"></i> ${album.pennies.length} ${album.pennies.length === 1 ? 'penny' : 'pennies'}
                     </span>
@@ -592,6 +634,22 @@ function initializeSortEventListeners() {
             
             // Add active class to clicked button
             event.target.classList.add('active');
+            
+            // Get the sort field and direction from the clicked button
+            const sortField = event.target.dataset.sort;
+            const sortDirection = event.target.dataset.direction;
+            
+            // Select the corresponding radio button
+            const radio = document.querySelector(`input[name="sortBy"][value="${sortField}"]`);
+            if (radio) {
+                radio.checked = true;
+            }
+            
+            // Apply the sort immediately
+            saveSortSettings(sortField, sortDirection);
+            sortAlbums(sortField, sortDirection);
+            closeSortOptionsModal();
+            showNotification('Albums sorted successfully!', 'success');
         }
     });
 }
@@ -615,7 +673,10 @@ function openUserGuide() {
 }
 
 function openAbout() {
-    showNotification('About feature coming soon!', 'info');
+    const aboutModal = document.getElementById('aboutModal');
+    if (aboutModal) {
+        aboutModal.style.display = 'block';
+    }
 }
 
 function openVersionInfo() {
@@ -648,9 +709,6 @@ function initializeEventListeners() {
     document.addEventListener('click', function(event) {
         if (event.target && event.target.id === 'saveBtn') {
             saveToAlbum();
-        }
-        if (event.target && event.target.id === 'editBtn') {
-            openEditModal();
         }
     });
 
@@ -955,130 +1013,18 @@ async function analyzeImage() {
         
         // Display results in the add penny modal
         const modalAnalysisSection = addPennyModal.querySelector('#analysisSection');
-        const modalLocationResult = addPennyModal.querySelector('#locationResult');
         const modalDescriptionResult = addPennyModal.querySelector('#descriptionResult');
-        const modalDateResult = addPennyModal.querySelector('#dateResult');
         
         console.log('Modal elements found:');
         console.log('Analysis section:', modalAnalysisSection);
-        console.log('Location input:', modalLocationResult);
         console.log('Description field:', modalDescriptionResult);
-        console.log('Date field:', modalDateResult);
 
-        // Improved location extraction
-        let location = 'Unknown Location';
+        // Use the AI response directly as the description
+        const description = text.trim();
         
-        // Look for common location indicators in the first few lines
-        const lines = text.split('\n').slice(0, 3); // Check first 3 lines
-        console.log('First 3 lines:', lines);
-        
-        for (const line of lines) {
-            const trimmedLine = line.trim();
-            console.log('Processing line:', trimmedLine);
-            
-            // Look for lines that contain location-like information
-            if (trimmedLine.includes('at ') || trimmedLine.includes('from ') || 
-                trimmedLine.includes('in ') || trimmedLine.includes('of ')) {
-                
-                console.log('Found location indicator in line:', trimmedLine);
-                
-                // Extract the location part
-                let locationText = trimmedLine;
-                
-                // Remove common prefixes
-                locationText = locationText.replace(/^(This elongated penny features?|This appears to be|This pressed penny|This elongated penny|This penny|This is)/i, '').trim();
-                locationText = locationText.replace(/^(at|from|in|of)\s+/i, '').trim();
-                
-                // Take the first part before a comma or period
-                locationText = locationText.split(/[,\.]/)[0].trim();
-                
-                console.log('Extracted location:', locationText);
-                
-                if (locationText.length > 5 && locationText.length < 100) {
-                    location = locationText;
-                    console.log('Final location set to:', location);
-                    break;
-                }
-            }
-        }
-        
-        // If we still don't have a good location, try to extract from the first sentence
-        if (location === 'Unknown Location') {
-            console.log('Trying fallback location extraction...');
-            const firstSentence = text.split(/[.!?]/)[0];
-            console.log('First sentence:', firstSentence);
-            
-            if (firstSentence.includes('at ') || firstSentence.includes('from ')) {
-                const match = firstSentence.match(/(?:at|from)\s+([^,\.]+)/i);
-                if (match && match[1]) {
-                    location = match[1].trim();
-                    console.log('Fallback location extracted:', location);
-                }
-            }
-        }
-        
-        // Additional location extraction patterns
-        if (location === 'Unknown Location') {
-            console.log('Trying additional location patterns...');
-            
-            // Look for common location patterns
-            const locationPatterns = [
-                /(?:features?|shows?|displays?|represents?)\s+([^,\.]+)/i,
-                /(?:from|at|in)\s+([^,\.]+)/i,
-                /(?:commemorates?|celebrates?)\s+([^,\.]+)/i
-            ];
-            
-            for (const pattern of locationPatterns) {
-                const match = text.match(pattern);
-                if (match && match[1]) {
-                    const potentialLocation = match[1].trim();
-                    if (potentialLocation.length > 5 && potentialLocation.length < 100) {
-                        location = potentialLocation;
-                        console.log('Location found with pattern:', location);
-                        break;
-                    }
-                }
-            }
-        }
-        
-        console.log('Final location result:', location);
-
-        // Create a comprehensive description from the AI response
-        let comprehensiveDescription = '';
-        
-        // For the new natural prompt, we want to preserve most of the response
-        // Just remove the first sentence if it's clearly just a location
-        const sentences = text.split(/[.!?]/).filter(s => s.trim().length > 10);
-        
-        if (sentences.length > 1) {
-            // Check if first sentence is just a location (short and location-like)
-            const firstSentence = sentences[0].trim();
-            if (firstSentence.length < 50 && (firstSentence.includes('at ') || firstSentence.includes('in ') || firstSentence.includes('of '))) {
-                // Skip the first sentence if it's just a short location
-                const descriptionSentences = sentences.slice(1);
-                comprehensiveDescription = descriptionSentences.join('. ').trim() + '.';
-            } else {
-                // Keep everything if the first sentence is substantial
-                comprehensiveDescription = sentences.join('. ').trim() + '.';
-            }
-        } else if (sentences.length === 1) {
-            // If only one sentence, use it all
-            comprehensiveDescription = sentences[0].trim() + '.';
-        }
-        
-        // If we still don't have a good description, create a simple one
-        if (!comprehensiveDescription || comprehensiveDescription.length < 10) {
-            comprehensiveDescription = `Elongated penny featuring ${location}`;
-        }
-        
-        // Keep the full description - no character limits
-        // The description field will handle overflow properly
-
-                // Update currentAnalysis with user input fields
+        // Update currentAnalysis with only the description
         currentAnalysis = {
-            location: '', // Will be filled by user
-            description: comprehensiveDescription, // Use the comprehensive description
-            date: 'Date from AI analysis',
+            description: description,
             fullResponse: text // Keep the full response for reference
         };
         
@@ -1090,19 +1036,16 @@ async function analyzeImage() {
         
         // Debug: Log what's being saved
         console.log('=== FINAL ANALYSIS RESULTS ===');
-        console.log('Location: (user will input)');
-        console.log('Description:', comprehensiveDescription);
+        console.log('Description:', description);
         console.log('Full currentAnalysis object:', currentAnalysis);
         console.log('================================');
         
-        // Now display the extracted values in the modal
-        if (modalLocationResult) modalLocationResult.value = 'Enter location here';
+        // Now display the description in the modal
         if (modalDescriptionResult) {
-            modalDescriptionResult.textContent = comprehensiveDescription;
-            console.log('Setting description in modal:', comprehensiveDescription);
-            console.log('Description length:', comprehensiveDescription.length);
+            modalDescriptionResult.textContent = description;
+            console.log('Setting description in modal:', description);
+            console.log('Description length:', description.length);
         }
-        if (modalDateResult) modalDateResult.textContent = 'Date from AI analysis';
 
         // Show analysis section in the modal
         if (modalAnalysisSection) modalAnalysisSection.style.display = 'block';
@@ -1257,23 +1200,21 @@ function showNotification(message, type = 'info') {
     }, 3000);
 }
 
-// Close modal when clicking outside
-window.addEventListener('click', function(event) {
-    if (event.target === editModal) {
-        closeModal();
-    }
-});
+// Close modal when clicking outside (editModal excluded to prevent accidental closure)
+// Note: editModal click-outside functionality removed to prevent accidental closure
 
 // Keyboard shortcuts
 document.addEventListener('keydown', function(event) {
     if (event.key === 'Escape') {
-        closeModal();
+        // Note: closeModal() excluded to prevent accidental closure of edit penny modal
         closeCreateAlbumModal();
         closeAlbumView();
         closeEditAlbumModal();
         closeAddPennyModal();
         closePennyViewModal();
         closeShareModal();
+        closeAboutModal();
+        closeVersionInfoModal();
     }
 });
 
@@ -1299,6 +1240,9 @@ function closeCreateAlbumModal() {
     
     // Clear category checkboxes
     populateCategoryCheckboxes('#albumCategoryCheckboxes', []);
+    
+    // Reset album image upload
+    resetAlbumImageUpload();
 }
 
 function createAlbum() {
@@ -1322,6 +1266,9 @@ function createAlbum() {
     
     const categories = Array.from(categoryCheckboxes).map(cb => cb.value);
     
+    // Use local image if available, otherwise use URL
+    const finalImageUrl = currentAlbumImageData || imageUrl;
+    
     const newAlbum = {
         id: Date.now().toString(),
         name: name,
@@ -1330,7 +1277,7 @@ function createAlbum() {
         tripDate: tripDate,
         location: location,
         locationUrl: locationUrl,
-        imageUrl: imageUrl,
+        imageUrl: finalImageUrl,
         pennies: [],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
@@ -1392,7 +1339,7 @@ function openAlbumView(albumId) {
                     <h2 class="album-hero-title">${currentAlbum.name}</h2>
                     <div class="album-hero-details">
                         ${currentAlbum.location ? `<span class="album-hero-location"><i class="fas fa-map-marker-alt"></i> ${currentAlbum.location}</span>` : ''}
-                        ${currentAlbum.tripDate ? `<span class="album-hero-date"><i class="fas fa-calendar"></i> ${new Date(currentAlbum.tripDate).toLocaleDateString()}</span>` : ''}
+                        ${currentAlbum.tripDate ? `<span class="album-hero-date"><i class="fas fa-calendar"></i> ${formatDateForDisplay(currentAlbum.tripDate)}</span>` : ''}
                     </div>
                 </div>
             </div>
@@ -1537,7 +1484,7 @@ function renderAlbumPenniesWithSearchHighlights() {
             <div class="penny-info">
                 <h4>${highlightedName}</h4>
                 <p class="location">${highlightedLocation}</p>
-                <p class="date">${penny.dateCollected ? new Date(penny.dateCollected).toLocaleDateString() : 'No date'}</p>
+                <p class="date">${formatDateForDisplay(penny.dateCollected)}</p>
             </div>
             <div class="penny-actions">
                 <button class="penny-action-btn edit-btn" onclick="editPennyInAlbum('${penny.id}')">
@@ -1560,7 +1507,7 @@ function renderAlbumPenniesNormal() {
             <div class="penny-info">
                 <h4>${penny.name}</h4>
                 <p class="location">${penny.location}</p>
-                <p class="date">${penny.dateCollected ? new Date(penny.dateCollected).toLocaleDateString() : 'No date'}</p>
+                <p class="date">${formatDateForDisplay(penny.dateCollected)}</p>
             </div>
             <div class="penny-actions">
                 <button class="penny-action-btn edit-btn" onclick="editPennyInAlbum('${penny.id}')">
@@ -1588,7 +1535,7 @@ function editCurrentAlbum() {
     const categories = currentAlbum.categories || (currentAlbum.category ? [currentAlbum.category] : []);
     populateCategoryCheckboxes('#editAlbumCategoryCheckboxes', categories);
     
-    document.getElementById('editAlbumTripDate').value = currentAlbum.tripDate || '';
+    document.getElementById('editAlbumTripDate').value = formatDateForInput(currentAlbum.tripDate);
     document.getElementById('editAlbumLocation').value = currentAlbum.location || '';
     document.getElementById('editAlbumLocationUrl').value = currentAlbum.locationUrl || '';
     document.getElementById('editAlbumImageUrl').value = currentAlbum.imageUrl || '';
@@ -1613,7 +1560,7 @@ function editAlbum(albumId) {
     const categories = album.categories || (album.category ? [album.category] : []);
     populateCategoryCheckboxes('#editAlbumCategoryCheckboxes', categories);
     
-    document.getElementById('editAlbumTripDate').value = album.tripDate || '';
+    document.getElementById('editAlbumTripDate').value = formatDateForInput(album.tripDate);
     document.getElementById('editAlbumLocation').value = album.location || '';
     document.getElementById('editAlbumLocationUrl').value = album.locationUrl || '';
     document.getElementById('editAlbumImageUrl').value = album.imageUrl || '';
@@ -1628,6 +1575,9 @@ function closeEditAlbumModal() {
     
     // Clear category checkboxes
     populateCategoryCheckboxes('#editAlbumCategoryCheckboxes', []);
+    
+    // Reset edit album image upload
+    resetEditAlbumImageUpload();
 }
 
 function openAddPennyModal() {
@@ -1724,7 +1674,7 @@ function openPennyView(pennyId, searchTerm = '') {
     document.getElementById('pennyViewImage').src = penny.imageData;
     document.getElementById('pennyViewName').innerHTML = highlightedName;
     document.getElementById('pennyViewLocation').innerHTML = highlightedLocation;
-    document.getElementById('pennyViewDate').textContent = penny.dateCollected ? new Date(penny.dateCollected).toLocaleDateString() : 'No date';
+    document.getElementById('pennyViewDate').textContent = formatDateForDisplay(penny.dateCollected);
     document.getElementById('pennyViewDescription').innerHTML = highlightedDescription;
     
     // Add notes field if it exists and has content
@@ -1774,7 +1724,10 @@ function saveAlbumEdit() {
     
     const categories = Array.from(categoryCheckboxes).map(cb => cb.value);
     
-    Object.assign(album, { name, description, categories, tripDate, location, locationUrl, imageUrl });
+    // Use local image if available, otherwise use URL
+    const finalImageUrl = currentEditAlbumImageData || imageUrl;
+    
+    Object.assign(album, { name, description, categories, tripDate, location, locationUrl, imageUrl: finalImageUrl });
     album.updatedAt = new Date().toISOString();
     saveAlbumsToStorage();
     renderAlbums();
@@ -1816,12 +1769,12 @@ function saveToAlbum() {
     
     console.log('Creating penny object...');
     
-    // Get location from user input field in the add penny modal
-    const userLocation = addPennyModal.querySelector('#locationResult').value;
-    const finalLocation = userLocation === 'Enter location here' || userLocation.trim() === '' ? 'Unknown Location' : userLocation.trim();
+    // Since we removed location and date fields, use default values
+    const finalLocation = 'Unknown Location';
+    const finalDate = new Date().toISOString().split('T')[0];
     
-    console.log('User location input:', userLocation);
     console.log('Final location:', finalLocation);
+    console.log('Final date:', finalDate);
     console.log('Description being saved:', currentAnalysis.description);
     console.log('Description length:', currentAnalysis.description ? currentAnalysis.description.length : 'undefined');
     
@@ -1830,7 +1783,7 @@ function saveToAlbum() {
         name: finalLocation,
         location: finalLocation,
         description: currentAnalysis.description || 'No description',
-        dateCollected: currentAnalysis.date || new Date().toISOString().split('T')[0],
+        dateCollected: finalDate,
         notes: '',
         imageData: currentImageData,
         analysis: currentAnalysis,
@@ -1863,7 +1816,9 @@ function editPennyInAlbum(pennyId) {
     document.getElementById('editName').value = penny.name;
     document.getElementById('editLocation').value = penny.location;
     document.getElementById('editDescription').value = penny.description;
-    document.getElementById('editDate').value = penny.dateCollected || '';
+    
+    // Fix date handling to prevent timezone issues
+    document.getElementById('editDate').value = formatDateForInput(penny.dateCollected);
     document.getElementById('editNotes').value = penny.notes || '';
     
     // Store current penny for editing
@@ -2112,9 +2067,7 @@ function importAlbums() {
 
 // Close modals when clicking outside
 window.addEventListener('click', function(event) {
-    if (event.target === editModal) {
-        closeModal();
-    }
+    // Note: editModal is intentionally excluded to prevent accidental closure
     if (event.target === createAlbumModal) {
         closeCreateAlbumModal();
     }
@@ -2132,6 +2085,12 @@ window.addEventListener('click', function(event) {
     }
     if (event.target.id === 'shareModal') {
         closeShareModal();
+    }
+    if (event.target.id === 'aboutModal') {
+        closeAboutModal();
+    }
+    if (event.target.id === 'versionInfoModal') {
+        closeVersionInfoModal();
     }
     if (event.target.id === 'userGuideModal') {
         closeUserGuideModal();
@@ -2280,12 +2239,25 @@ function openUserGuideInNewTab() {
     }
 }
 
-function openAbout() {
-    showNotification('About - Coming Soon!', 'info');
+function closeAboutModal() {
+    const aboutModal = document.getElementById('aboutModal');
+    if (aboutModal) {
+        aboutModal.style.display = 'none';
+    }
 }
 
 function openVersionInfo() {
-    showNotification('Version Info - Coming Soon!', 'info');
+    const versionInfoModal = document.getElementById('versionInfoModal');
+    if (versionInfoModal) {
+        versionInfoModal.style.display = 'block';
+    }
+}
+
+function closeVersionInfoModal() {
+    const versionInfoModal = document.getElementById('versionInfoModal');
+    if (versionInfoModal) {
+        versionInfoModal.style.display = 'none';
+    }
 }
 
 // Collection name functions
@@ -2366,6 +2338,200 @@ function saveCollectionSettings() {
     setCollectionName(newName);
     closeCollectionSettingsModal();
     showNotification('Collection settings saved!', 'success');
+}
+
+// Album Image Upload Functions
+function initializeAlbumImageUpload() {
+    const albumImageUploadArea = document.getElementById('albumImageUploadArea');
+    const albumImageInput = document.getElementById('albumImageInput');
+    const albumChooseImageBtn = document.getElementById('albumChooseImageBtn');
+    
+    if (!albumImageUploadArea || !albumImageInput || !albumChooseImageBtn) {
+        console.log('Album image upload elements not found');
+        return;
+    }
+    
+    // File input change event
+    albumImageInput.addEventListener('change', handleAlbumImageSelect);
+    
+    // Click to browse
+    albumImageUploadArea.addEventListener('click', () => albumImageInput.click());
+    albumChooseImageBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        albumImageInput.click();
+    });
+    
+    // Drag and drop events
+    albumImageUploadArea.addEventListener('dragover', handleAlbumImageDragOver);
+    albumImageUploadArea.addEventListener('drop', handleAlbumImageDrop);
+    albumImageUploadArea.addEventListener('dragenter', handleAlbumImageDragEnter);
+    albumImageUploadArea.addEventListener('dragleave', handleAlbumImageDragLeave);
+}
+
+function handleAlbumImageSelect(event) {
+    const file = event.target.files[0];
+    if (file && file.type.startsWith('image/')) {
+        processAlbumImageFile(file);
+    }
+}
+
+function handleAlbumImageDragOver(event) {
+    event.preventDefault();
+    document.getElementById('albumImageUploadArea').classList.add('dragover');
+}
+
+function handleAlbumImageDrop(event) {
+    event.preventDefault();
+    document.getElementById('albumImageUploadArea').classList.remove('dragover');
+    
+    const files = event.dataTransfer.files;
+    if (files.length > 0 && files[0].type.startsWith('image/')) {
+        processAlbumImageFile(files[0]);
+    }
+}
+
+function handleAlbumImageDragEnter(event) {
+    event.preventDefault();
+    document.getElementById('albumImageUploadArea').classList.add('dragover');
+}
+
+function handleAlbumImageDragLeave(event) {
+    event.preventDefault();
+    document.getElementById('albumImageUploadArea').classList.remove('dragover');
+}
+
+function processAlbumImageFile(file) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        // Compress the image for album background
+        compressImage(e.target.result, 1200, 800, 0.8).then(compressedData => {
+            currentAlbumImageData = compressedData;
+            
+            // Show preview
+            const albumPreviewImage = document.getElementById('albumPreviewImage');
+            const albumUploadPreview = document.getElementById('albumUploadPreview');
+            const albumImageUploadArea = document.getElementById('albumImageUploadArea');
+            
+            if (albumPreviewImage && albumUploadPreview && albumImageUploadArea) {
+                albumPreviewImage.src = compressedData;
+                albumUploadPreview.style.display = 'block';
+                albumImageUploadArea.style.display = 'none';
+                
+                // Clear the URL field since local image takes precedence
+                const albumImageUrl = document.getElementById('albumImageUrl');
+                if (albumImageUrl) {
+                    albumImageUrl.value = '';
+                }
+                
+                showNotification('Image uploaded successfully!', 'success');
+            }
+        });
+    };
+    reader.readAsDataURL(file);
+}
+
+function resetAlbumImageUpload() {
+    currentAlbumImageData = null;
+    
+    const albumUploadPreview = document.getElementById('albumUploadPreview');
+    const albumImageUploadArea = document.getElementById('albumImageUploadArea');
+    const albumImageInput = document.getElementById('albumImageInput');
+    
+    if (albumUploadPreview) albumUploadPreview.style.display = 'none';
+    if (albumImageUploadArea) albumImageUploadArea.style.display = 'block';
+    if (albumImageInput) albumImageInput.value = '';
+}
+
+// Edit Album Image Upload Functions
+function initializeEditAlbumImageUpload() {
+    const uploadArea = document.getElementById('editAlbumImageUploadArea');
+    const fileInput = document.getElementById('editAlbumImageFileInput');
+    
+    if (!uploadArea || !fileInput) return;
+    
+    // Drag and drop events
+    uploadArea.addEventListener('dragover', handleEditAlbumDragOver);
+    uploadArea.addEventListener('dragleave', handleEditAlbumDragLeave);
+    uploadArea.addEventListener('drop', handleEditAlbumDrop);
+    uploadArea.addEventListener('click', () => fileInput.click());
+    
+    // File input change event
+    fileInput.addEventListener('change', handleEditAlbumFileSelect);
+}
+
+function handleEditAlbumDragOver(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    e.target.closest('.album-image-upload-area').classList.add('dragover');
+}
+
+function handleEditAlbumDragLeave(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    e.target.closest('.album-image-upload-area').classList.remove('dragover');
+}
+
+function handleEditAlbumDrop(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const uploadArea = e.target.closest('.album-image-upload-area');
+    uploadArea.classList.remove('dragover');
+    
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+        processEditAlbumImageFile(files[0]);
+    }
+}
+
+function handleEditAlbumFileSelect(e) {
+    const file = e.target.files[0];
+    if (file) {
+        processEditAlbumImageFile(file);
+    }
+}
+
+function processEditAlbumImageFile(file) {
+    if (!file.type.startsWith('image/')) {
+        showNotification('Please select an image file', 'error');
+        return;
+    }
+    
+    if (file.size > 10 * 1024 * 1024) { // 10MB limit
+        showNotification('Image file must be smaller than 10MB', 'error');
+        return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        currentEditAlbumImageData = e.target.result;
+        displayEditAlbumImagePreview(e.target.result);
+        showNotification('Image uploaded successfully!', 'success');
+    };
+    reader.readAsDataURL(file);
+}
+
+function displayEditAlbumImagePreview(imageSrc) {
+    const uploadContent = document.getElementById('editAlbumUploadContent');
+    const uploadPreview = document.getElementById('editAlbumUploadPreview');
+    const previewImage = document.getElementById('editAlbumPreviewImage');
+    
+    if (uploadContent) uploadContent.style.display = 'none';
+    if (uploadPreview) uploadPreview.style.display = 'block';
+    if (previewImage) previewImage.src = imageSrc;
+}
+
+function resetEditAlbumImageUpload() {
+    currentEditAlbumImageData = null;
+    const uploadArea = document.getElementById('editAlbumImageUploadArea');
+    const uploadContent = document.getElementById('editAlbumUploadContent');
+    const uploadPreview = document.getElementById('editAlbumUploadPreview');
+    const fileInput = document.getElementById('editAlbumImageFileInput');
+    
+    if (uploadArea) uploadArea.classList.remove('dragover');
+    if (uploadContent) uploadContent.style.display = 'block';
+    if (uploadPreview) uploadPreview.style.display = 'none';
+    if (fileInput) fileInput.value = '';
 }
 
 // Function to create a fresh file input element

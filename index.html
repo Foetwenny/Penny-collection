@@ -278,6 +278,28 @@
                                 <label for="albumImageUrl">Background Image URL (optional):</label>
                                 <input type="url" id="albumImageUrl" placeholder="https://i.imgur.com/... or any image URL">
                             </div>
+                            <div class="form-group">
+                                <label>Or Upload Local Image:</label>
+                                <div class="album-image-upload-area" id="albumImageUploadArea">
+                                    <div class="album-upload-content">
+                                        <i class="fas fa-cloud-upload-alt"></i>
+                                        <p>Drag & drop an image here or click to browse</p>
+                                        <small>This will override the URL field above</small>
+                                        <input type="file" id="albumImageInput" accept="image/*" hidden>
+                                        <button type="button" class="album-upload-btn" id="albumChooseImageBtn">
+                                            Choose Local Image
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="album-upload-preview" id="albumUploadPreview" style="display: none;">
+                                    <img id="albumPreviewImage" src="" alt="Preview">
+                                    <div class="album-preview-actions">
+                                        <button type="button" class="album-reset-btn" onclick="resetAlbumImageUpload()">
+                                            <i class="fas fa-times"></i> Remove Image
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
                         </form>
                     </div>
                     <div class="modal-footer">
@@ -318,24 +340,13 @@
                             <h4><i class="fas fa-brain"></i> AI Analysis Results</h4>
                             <div class="analysis-content">
                                 <div class="analysis-item">
-                                    <label>Location:</label>
-                                    <input type="text" id="locationResult" placeholder="Enter location here" class="analysis-input">
-                                </div>
-                                <div class="analysis-item">
                                     <label>Description:</label>
                                     <p id="descriptionResult">Analyzing...</p>
-                                </div>
-                                <div class="analysis-item">
-                                    <label>Estimated Date:</label>
-                                    <span id="dateResult">Analyzing...</span>
                                 </div>
                             </div>
                             <div class="analysis-actions">
                                 <button class="save-btn" id="saveBtn">
                                     <i class="fas fa-save"></i> Save to Album
-                                </button>
-                                <button class="edit-btn" id="editBtn">
-                                    <i class="fas fa-edit"></i> Edit Details
                                 </button>
                             </div>
                         </div>
@@ -356,9 +367,6 @@
                 <div class="modal-content">
                     <div class="modal-header">
                         <h3>Edit Penny Details</h3>
-                        <button class="close-btn" onclick="closeModal()">
-                            <i class="fas fa-times"></i>
-                        </button>
                     </div>
                     <div class="modal-body">
                         <form id="editForm">
@@ -525,6 +533,28 @@
                             <div class="form-group">
                                 <small>Tip: You can use public image links (e.g., Imgur). The image will be displayed as the album card background.</small>
                             </div>
+                            <div class="form-group">
+                                <label>Or Upload Local Image:</label>
+                                <div class="album-image-upload-area" id="editAlbumImageUploadArea">
+                                    <input type="file" id="editAlbumImageFileInput" accept="image/*" style="display: none;">
+                                    <div class="album-upload-content" id="editAlbumUploadContent">
+                                        <i class="fas fa-cloud-upload-alt"></i>
+                                        <p>Drag and drop an image here</p>
+                                        <p>or</p>
+                                        <button type="button" class="upload-btn" onclick="document.getElementById('editAlbumImageFileInput').click()">
+                                            <i class="fas fa-folder-open"></i> Browse Files
+                                        </button>
+                                    </div>
+                                    <div class="album-upload-preview" id="editAlbumUploadPreview" style="display: none;">
+                                        <img id="editAlbumPreviewImage" src="" alt="Preview">
+                                        <div class="album-preview-controls">
+                                            <button type="button" class="remove-upload-btn" onclick="resetEditAlbumImageUpload()">
+                                                <i class="fas fa-times"></i> Remove
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </form>
                     </div>
                     <div class="modal-footer">
@@ -602,24 +632,13 @@
                                 <h4><i class="fas fa-brain"></i> AI Analysis Results</h4>
                                 <div class="analysis-content">
                                     <div class="analysis-item">
-                                        <label>Location:</label>
-                                        <input type="text" id="locationResult" placeholder="Enter location here" class="analysis-input">
-                                    </div>
-                                    <div class="analysis-item">
                                         <label>Description:</label>
                                         <p id="descriptionResult" class="description-text">Analyzing...</p>
-                                    </div>
-                                    <div class="analysis-item">
-                                        <label>Estimated Date:</label>
-                                        <span id="dateResult">Analyzing...</span>
                                     </div>
                                 </div>
                                 <div class="analysis-actions">
                                     <button class="save-btn" id="saveBtn">
                                         <i class="fas fa-save"></i> Save to Album
-                                    </button>
-                                    <button class="edit-btn" id="editBtn">
-                                        <i class="fas fa-edit"></i> Edit Details
                                     </button>
                                 </div>
                             </div>
@@ -768,10 +787,9 @@
                              </div>
                          </div>
                      </div>
-                     <div class="modal-footer">
-                         <button class="cancel-btn" onclick="closeSortOptionsModal()">Cancel</button>
-                         <button class="save-btn" onclick="applySort()">Apply Sort</button>
-                     </div>
+                                         <div class="modal-footer">
+                        <button class="save-btn" onclick="closeSortOptionsModal()">Close</button>
+                    </div>
                  </div>
              </div>
 
@@ -869,7 +887,7 @@
                                  <h5>Adding Pennies:</h5>
                                  <ul>
                                      <li><strong>Upload Image:</strong> Drag & drop or click to browse for penny photos</li>
-                                                                           <li><strong>AI Analysis:</strong> Use AI to automatically identify location and details (optional) - setup instructions available in the menu</li>
+                                                                           <li><strong>AI Analysis:</strong> Use AI to automatically identify and describe the penny - setup instructions available in the menu</li>
                                      <li><strong>Manual Entry:</strong> Enter all penny details manually without AI analysis</li>
                                      <li><strong>Flexible Workflow:</strong> Choose between AI assistance or manual entry based on your preference</li>
                                  </ul>
@@ -929,8 +947,185 @@
                              <i class="fas fa-external-link-alt"></i> Open in New Tab
                          </button>
                      </div>
-                 </div>
-             </div>
+                                 </div>
+            </div>
+
+            <!-- About Modal -->
+            <div class="modal" id="aboutModal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3><i class="fas fa-info-circle"></i> About Traveler's Penny Log</h3>
+                        <button class="close-btn" onclick="closeAboutModal()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="about-content">
+                            <div class="about-header">
+                                <i class="fas fa-coins about-icon"></i>
+                                <h4>Traveler's Penny Log</h4>
+                                <p class="about-subtitle">Your Digital Pressed Penny Collection</p>
+                            </div>
+                            
+                            <div class="about-description">
+                                <p>A modern, AI-powered web application designed for organizing and displaying your elongated penny collection. Perfect for collectors who want to preserve memories of their travels and showcase their pressed penny adventures.</p>
+                            </div>
+
+                            <div class="about-features">
+                                <h5><i class="fas fa-star"></i> Key Features</h5>
+                                <ul>
+                                    <li><i class="fas fa-photo-video"></i> Smart album organization with customizable categories</li>
+                                    <li><i class="fas fa-robot"></i> AI-powered penny identification and description</li>
+                                    <li><i class="fas fa-upload"></i> Drag & drop image uploads with automatic compression</li>
+                                    <li><i class="fas fa-search"></i> Advanced search and sorting capabilities</li>
+                                    <li><i class="fas fa-shield-alt"></i> Local data storage for privacy and offline access</li>
+                                    <li><i class="fas fa-download"></i> Export/import for backup and sharing</li>
+                                    <li><i class="fas fa-mobile-alt"></i> Responsive design for all devices</li>
+                                </ul>
+                            </div>
+
+                            <div class="about-tech">
+                                <h5><i class="fas fa-cog"></i> Technology</h5>
+                                <p><i class="fas fa-brain"></i> <strong>Powered by Google Gemini AI</strong> for intelligent penny analysis and descriptions</p>
+                                <p><i class="fas fa-lock"></i> <strong>Privacy First:</strong> Your data stays private - everything is stored locally in your browser</p>
+                            </div>
+
+                            <div class="about-footer">
+                                <p><i class="fas fa-heart"></i> Made with love for penny collectors everywhere</p>
+                                <p class="about-version">Version 2.0 - Enhanced with AI Analysis</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="save-btn" onclick="closeAboutModal()">Close</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Version Info Modal -->
+            <div class="modal" id="versionInfoModal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3><i class="fas fa-code-branch"></i> Version Information</h3>
+                        <button class="close-btn" onclick="closeVersionInfoModal()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="version-content">
+                            <div class="version-current">
+                                <h4><i class="fas fa-tag"></i> Current Version</h4>
+                                <div class="version-badge">
+                                    <span class="version-number">2.0.0</span>
+                                    <span class="version-name">AI Enhanced</span>
+                                </div>
+                                <p class="version-date">Latest Release</p>
+                            </div>
+
+                            <div class="version-changelog">
+                                <h4><i class="fas fa-list-ul"></i> What's New in 2.0</h4>
+                                <div class="changelog-item">
+                                    <div class="changelog-header">
+                                        <i class="fas fa-robot"></i>
+                                        <strong>AI-Powered Analysis</strong>
+                                        <span class="changelog-badge new">NEW</span>
+                                    </div>
+                                    <p>Integrated Google Gemini AI for automatic penny identification and detailed descriptions</p>
+                                </div>
+                                
+                                <div class="changelog-item">
+                                    <div class="changelog-header">
+                                        <i class="fas fa-upload"></i>
+                                        <strong>Enhanced Image Upload</strong>
+                                        <span class="changelog-badge improved">IMPROVED</span>
+                                    </div>
+                                    <p>Added drag & drop support for album background images in both create and edit modals</p>
+                                </div>
+
+                                <div class="changelog-item">
+                                    <div class="changelog-header">
+                                        <i class="fas fa-sort"></i>
+                                        <strong>Instant Sorting</strong>
+                                        <span class="changelog-badge improved">IMPROVED</span>
+                                    </div>
+                                    <p>Sort options now apply immediately without needing to click "Apply"</p>
+                                </div>
+
+                                <div class="changelog-item">
+                                    <div class="changelog-header">
+                                        <i class="fas fa-calendar"></i>
+                                        <strong>Date Handling</strong>
+                                        <span class="changelog-badge fixed">FIXED</span>
+                                    </div>
+                                    <p>Resolved timezone issues causing dates to display incorrectly</p>
+                                </div>
+
+                                <div class="changelog-item">
+                                    <div class="changelog-header">
+                                        <i class="fas fa-shield-alt"></i>
+                                        <strong>Privacy & Security</strong>
+                                        <span class="changelog-badge enhanced">ENHANCED</span>
+                                    </div>
+                                    <p>All data remains local to your browser - no cloud storage or tracking</p>
+                                </div>
+                            </div>
+
+                            <div class="version-technical">
+                                <h4><i class="fas fa-cog"></i> Technical Details</h4>
+                                <div class="tech-grid">
+                                    <div class="tech-item">
+                                        <strong>Platform:</strong>
+                                        <span>Progressive Web App (PWA)</span>
+                                    </div>
+                                    <div class="tech-item">
+                                        <strong>Storage:</strong>
+                                        <span>Local Browser Storage</span>
+                                    </div>
+                                    <div class="tech-item">
+                                        <strong>AI Engine:</strong>
+                                        <span>Google Gemini 2.5 Flash</span>
+                                    </div>
+                                    <div class="tech-item">
+                                        <strong>Image Processing:</strong>
+                                        <span>Client-side Compression</span>
+                                    </div>
+                                    <div class="tech-item">
+                                        <strong>Compatibility:</strong>
+                                        <span>Modern Browsers (Chrome, Firefox, Safari, Edge)</span>
+                                    </div>
+                                    <div class="tech-item">
+                                        <strong>Responsive:</strong>
+                                        <span>Desktop, Tablet, Mobile</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="version-roadmap">
+                                <h4><i class="fas fa-road"></i> Coming Soon</h4>
+                                <div class="roadmap-item">
+                                    <i class="fas fa-share-alt"></i>
+                                    <span>Enhanced sharing capabilities</span>
+                                </div>
+                                <div class="roadmap-item">
+                                    <i class="fas fa-filter"></i>
+                                    <span>Advanced filtering options</span>
+                                </div>
+                                <div class="roadmap-item">
+                                    <i class="fas fa-chart-bar"></i>
+                                    <span>Collection statistics and insights</span>
+                                </div>
+                                <div class="roadmap-item">
+                                    <i class="fas fa-mobile-alt"></i>
+                                    <span>Offline mobile app</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="save-btn" onclick="closeVersionInfoModal()">Close</button>
+                    </div>
+                </div>
+            </div>
         </main>
     </div>
 
