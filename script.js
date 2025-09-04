@@ -51,6 +51,20 @@ let isDarkMode = localStorage.getItem('darkMode') === 'true';
 let currentAlbumImageData = null;
 let currentEditAlbumImageData = null;
 
+// Audio system
+let audioSystem = {
+    enabled: localStorage.getItem('soundEnabled') !== 'false', // Default to enabled now that we have real sound files
+    volume: parseFloat(localStorage.getItem('soundVolume')) || 0.3, // Default 30% volume
+    sounds: {
+        pageTurn: null,
+        coinClink: null,
+        menuClick: null,
+        successChime: null,
+        modalSwish: null
+    },
+    audioContext: null
+};
+
 // DOM elements
 const uploadArea = document.getElementById('uploadArea');
 const imageInput = document.getElementById('imageInput');
@@ -80,6 +94,8 @@ document.addEventListener('DOMContentLoaded', function() {
     updateCollectionNameDisplay();
     initializeAlbumImageUpload();
     initializeEditAlbumImageUpload();
+    initializeAudioSystem();
+    updateCollectionSummary();
     
     // Apply default sort
     const currentSort = getCurrentSortSettings();
@@ -183,6 +199,9 @@ function toggleMenu() {
         menuToggle.classList.remove('active');
     } else {
         console.log('Opening menu...');
+        // Play menu click sound
+        playSound('menuClick');
+        
         // Close any other open dropdowns first
         document.querySelectorAll('.menu-dropdown.active').forEach(dropdown => {
             dropdown.classList.remove('active');
@@ -276,6 +295,9 @@ function updateSearchResults(results, query) {
         searchResultsCount.textContent = `${results.length} result${results.length === 1 ? '' : 's'}`;
         searchResultsQuery.textContent = `for "${query}"`;
         searchResultsSection.style.display = 'block';
+        
+        // Play search sound when results are found
+        playSound('menuClick');
     } else {
         searchResultsCount.textContent = 'No results found';
         searchResultsQuery.textContent = `for "${query}"`;
@@ -347,6 +369,34 @@ function renderAlbums() {
             </div>
         </div>`;
     }).join('');
+    
+    // Update collection summary
+    updateCollectionSummary();
+}
+
+function updateCollectionSummary() {
+    const albumCountElement = document.getElementById('albumCount');
+    const pennyCountElement = document.getElementById('pennyCount');
+    
+    if (albumCountElement && pennyCountElement) {
+        // Count total albums
+        const totalAlbums = albums.length;
+        
+        // Count total pennies across all albums
+        const totalPennies = albums.reduce((total, album) => {
+            return total + (album.pennies ? album.pennies.length : 0);
+        }, 0);
+        
+        // Update the display
+        albumCountElement.textContent = totalAlbums;
+        pennyCountElement.textContent = totalPennies;
+        
+        // Show/hide the summary based on whether there are albums
+        const collectionSummary = document.getElementById('collectionSummary');
+        if (collectionSummary) {
+            collectionSummary.style.display = totalAlbums > 0 ? 'block' : 'none';
+        }
+    }
 }
 
 function renderAlbumsWithSearchHighlights(filteredAlbums) {
@@ -419,6 +469,9 @@ function renderAlbumsWithSearchHighlights(filteredAlbums) {
             </div>
         </div>`;
     }).join('');
+    
+    // Update collection summary
+    updateCollectionSummary();
 }
 
 function clearSearch() {
@@ -924,6 +977,10 @@ function resetUpload() {
     const saveManualPennyBtn = document.getElementById('saveManualPennyBtn');
     if (saveManualPennyBtn) saveManualPennyBtn.style.display = 'none';
     
+    // Show the manual entry button again
+    const manualEntryBtn = document.getElementById('manualEntryBtn');
+    if (manualEntryBtn) manualEntryBtn.style.display = 'inline-block';
+    
     // Reset the location input field
     const locationInput = addPennyModal.querySelector('#locationResult');
     if (locationInput) {
@@ -1050,8 +1107,15 @@ async function analyzeImage() {
         // Show analysis section in the modal
         if (modalAnalysisSection) modalAnalysisSection.style.display = 'block';
 
+        // Hide the manual entry button since AI analysis is complete
+        const manualEntryBtn = document.getElementById('manualEntryBtn');
+        if (manualEntryBtn) manualEntryBtn.style.display = 'none';
+
         // Show success notification
         showNotification('AI analysis completed successfully!', 'success');
+        
+        // Play success chime when AI analysis completes
+        playSound('successChime');
 
     } catch (error) {
         console.error('AI analysis failed:', error);
@@ -1104,6 +1168,9 @@ function saveToCollection() {
     renderCollection();
     resetUpload();
     
+    // Play success sound
+    playSound('successChime');
+    
     // Show success message
     showNotification('Penny added to collection successfully!', 'success');
 }
@@ -1140,6 +1207,9 @@ function saveEdit() {
             
             saveCollectionToStorage();
             renderCollection();
+            
+            // Play success sound
+            playSound('successChime');
         }
     } else {
         // Editing current analysis before saving
@@ -1215,6 +1285,7 @@ document.addEventListener('keydown', function(event) {
         closeShareModal();
         closeAboutModal();
         closeVersionInfoModal();
+        closeDisplayPreferencesModal();
     }
 });
 
@@ -1228,6 +1299,9 @@ function closeModal() {
 function openCreateAlbumModal() {
     createAlbumModal.style.display = 'block';
     document.getElementById('albumName').focus();
+    
+    // Play modal swish sound when opening create album modal
+    playSound('modalSwish');
     
     // Clear form and category checkboxes
     document.getElementById('createAlbumForm').reset();
@@ -1286,6 +1360,10 @@ function createAlbum() {
     albums.push(newAlbum);
     saveAlbumsToStorage();
     renderAlbums();
+    
+    // Play success sound
+    playSound('successChime');
+    
     closeCreateAlbumModal();
     showNotification('Album created successfully!', 'success');
 }
@@ -1380,6 +1458,9 @@ function openAlbumView(albumId) {
     
     renderAlbumPennies();
     document.getElementById('albumViewScreen').style.display = 'block';
+    
+    // Play page turn sound when opening album
+    playSound('pageTurn');
 }
 
 function closeAlbumView() {
@@ -1387,6 +1468,9 @@ function closeAlbumView() {
     currentAlbum = null;
     isSharedView = false;
     resetUpload();
+    
+    // Play page turn sound for closing album
+    playSound('pageTurn');
     
     // Clear the URL parameters when closing shared view
     if (window.location.search.includes('share=')) {
@@ -1402,6 +1486,9 @@ function deleteCurrentAlbum() {
     if (confirm(`Are you sure you want to delete "${currentAlbum.name}"? This action cannot be undone.`)) {
         // Delete the album
         deleteAlbum(currentAlbum.id);
+        
+        // Play delete sound
+        playSound('deleteSound');
         
         // Close the album view
         closeAlbumView();
@@ -1583,6 +1670,9 @@ function closeEditAlbumModal() {
 function openAddPennyModal() {
     addPennyModal.style.display = 'block';
     resetUpload();
+    
+    // Play modal swish sound when opening add penny modal
+    playSound('modalSwish');
 }
 
 function closeAddPennyModal() {
@@ -1608,6 +1698,10 @@ function showManualEntryForm() {
     document.getElementById('uploadPreview').style.display = 'none';
     document.getElementById('manualEntryForm').style.display = 'block';
     document.getElementById('saveManualPennyBtn').style.display = 'inline-flex';
+    
+    // Hide AI analysis section if it was shown
+    const modalAnalysisSection = addPennyModal.querySelector('#analysisSection');
+    if (modalAnalysisSection) modalAnalysisSection.style.display = 'none';
 }
 
 function saveManualPenny() {
@@ -1657,6 +1751,10 @@ function saveManualPenny() {
 function openPennyViewFromElement(pennyElement) {
     const pennyId = pennyElement.dataset.pennyId;
     const searchTerm = pennyElement.dataset.searchTerm || '';
+    
+    // Play coin clink sound when clicking a penny
+    playSound('coinClink');
+    
     openPennyView(pennyId, searchTerm);
 }
 
@@ -1801,6 +1899,10 @@ function saveToAlbum() {
     renderAlbumPennies(); // Update the pennies display in the album view
     console.log('Resetting upload...');
     resetUpload();
+    
+    // Play success sound
+    playSound('successChime');
+    
     console.log('Closing modal...');
     closeAddPennyModal();
     
@@ -1839,6 +1941,10 @@ function deletePennyFromAlbum(pennyId) {
         saveAlbumsToStorage();
         renderAlbums(); // Update the main album cards
         renderAlbumPennies(); // Update the pennies display in the album view
+        
+        // Play delete sound
+        playSound('deleteSound');
+        
         showNotification('Penny deleted successfully!', 'success');
     }
 }
@@ -1857,6 +1963,10 @@ function saveEdit() {
     currentAlbum.updatedAt = new Date().toISOString();
     saveAlbumsToStorage();
     renderAlbumPennies();
+    
+    // Play success sound
+    playSound('successChime');
+    
     closeModal();
     
     showNotification('Penny updated successfully!', 'success');
@@ -2092,6 +2202,9 @@ window.addEventListener('click', function(event) {
     if (event.target.id === 'versionInfoModal') {
         closeVersionInfoModal();
     }
+    if (event.target.id === 'displayPreferencesModal') {
+        closeDisplayPreferencesModal();
+    }
     if (event.target.id === 'userGuideModal') {
         closeUserGuideModal();
     }
@@ -2115,7 +2228,88 @@ function openFilterSettings() {
 // openAIConfig function is now defined in ai-config.js
 
 function openDisplayPreferences() {
-    showNotification('Display Preferences - Coming Soon!', 'info');
+    const displayPreferencesModal = document.getElementById('displayPreferencesModal');
+    if (displayPreferencesModal) {
+        displayPreferencesModal.style.display = 'block';
+        
+        // Load current settings
+        loadDisplayPreferences();
+        
+        // Play modal swish sound
+        playSound('modalSwish');
+    }
+}
+
+function closeDisplayPreferencesModal() {
+    const displayPreferencesModal = document.getElementById('displayPreferencesModal');
+    if (displayPreferencesModal) {
+        displayPreferencesModal.style.display = 'none';
+    }
+}
+
+function loadDisplayPreferences() {
+    // Load sound settings
+    const soundToggle = document.getElementById('soundEnabledToggle');
+    const volumeSlider = document.getElementById('soundVolumeSlider');
+    const volumeDisplay = document.getElementById('volumeDisplay');
+    const darkModeToggle = document.getElementById('darkModeToggle');
+    
+    if (soundToggle) {
+        soundToggle.checked = audioSystem.enabled;
+    }
+    
+    if (volumeSlider && volumeDisplay) {
+        volumeSlider.value = Math.round(audioSystem.volume * 100);
+        volumeDisplay.textContent = Math.round(audioSystem.volume * 100) + '%';
+    }
+    
+    if (darkModeToggle) {
+        darkModeToggle.checked = isDarkMode;
+    }
+}
+
+function toggleSoundSetting() {
+    const soundToggle = document.getElementById('soundEnabledToggle');
+    if (soundToggle) {
+        audioSystem.enabled = soundToggle.checked;
+        updateAudioSettings();
+        
+        // Play a test sound if enabling
+        if (audioSystem.enabled) {
+            playSound('menuClick');
+        }
+    }
+}
+
+function updateSoundVolume(value) {
+    const volumeDisplay = document.getElementById('volumeDisplay');
+    if (volumeDisplay) {
+        volumeDisplay.textContent = value + '%';
+    }
+    
+    setSoundVolume(value / 100);
+    
+    // Play a test sound to show volume change
+    if (audioSystem.enabled) {
+        playSound('menuClick');
+    }
+}
+
+function testSounds() {
+    if (!audioSystem.enabled) {
+        showNotification('Enable sounds first to test them!', 'warning');
+        return;
+    }
+    
+    // Play each sound with a slight delay
+    const sounds = ['menuClick', 'coinClink', 'pageTurn', 'successChime', 'modalSwish'];
+    sounds.forEach((sound, index) => {
+        setTimeout(() => {
+            playSound(sound);
+        }, index * 500);
+    });
+    
+    showNotification('Playing sound test sequence...', 'info');
 }
 
 function openCollectionDefaults() {
@@ -2338,6 +2532,165 @@ function saveCollectionSettings() {
     setCollectionName(newName);
     closeCollectionSettingsModal();
     showNotification('Collection settings saved!', 'success');
+}
+
+// Audio System Functions
+function initializeAudioSystem() {
+    // Initialize audio context
+    audioSystem.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    
+    // Load real sound files
+    loadSoundFiles();
+    
+    // Load saved settings
+    updateAudioSettings();
+}
+
+function loadSoundFiles() {
+    // Sound file paths - using the actual filenames you added
+    const soundFiles = {
+        pageTurn: 'sounds/167046__drminky__page-turn-2.wav',
+        coinClink: 'sounds/368203__kermite607__coin-dropped.wav', 
+        menuClick: 'sounds/702168__foxfire__click-tick-menu-navigation.wav',
+        successChime: 'sounds/242501__gabrielaraujo__powerupsuccess.wav',
+        modalSwish: 'sounds/269321__kwahmah_02__swoosh19.wav'
+    };
+    
+    // Load each sound file
+    Object.keys(soundFiles).forEach(soundName => {
+        loadSoundFile(soundName, soundFiles[soundName]);
+    });
+}
+
+function loadSoundFile(soundName, filePath) {
+    console.log(`Attempting to load sound: ${soundName} from ${filePath}`);
+    
+    // Try using HTML5 Audio element first (works with file:// protocol)
+    const audio = new Audio(filePath);
+    
+    audio.addEventListener('canplaythrough', () => {
+        console.log(`✅ Successfully loaded sound: ${soundName}`);
+        audioSystem.sounds[soundName] = {
+            audio: audio,
+            play: () => {
+                if (!audioSystem.enabled) return;
+                audio.currentTime = 0;
+                audio.volume = audioSystem.volume;
+                audio.play().catch(e => console.warn(`Could not play ${soundName}:`, e));
+            }
+        };
+    });
+    
+    audio.addEventListener('error', (e) => {
+        console.error(`❌ Failed to load sound file ${filePath}:`, e);
+        // Try fetch as fallback
+        tryFetchSound(soundName, filePath);
+    });
+    
+    // Start loading
+    audio.load();
+}
+
+function tryFetchSound(soundName, filePath) {
+    fetch(filePath)
+        .then(response => {
+            console.log(`Response for ${soundName}:`, response.status, response.statusText);
+            if (!response.ok) {
+                console.error(`Sound file ${filePath} not found (${response.status}), using fallback`);
+                audioSystem.sounds[soundName] = createFallbackSound(soundName);
+                return;
+            }
+            return response.arrayBuffer();
+        })
+        .then(arrayBuffer => {
+            if (arrayBuffer) {
+                console.log(`Decoding audio data for ${soundName}, size: ${arrayBuffer.byteLength} bytes`);
+                audioSystem.audioContext.decodeAudioData(arrayBuffer)
+                    .then(audioBuffer => {
+                        audioSystem.sounds[soundName] = {
+                            buffer: audioBuffer,
+                            play: () => playAudioBuffer(audioBuffer)
+                        };
+                        console.log(`✅ Successfully loaded sound via fetch: ${soundName}`);
+                    })
+                    .catch(error => {
+                        console.error(`❌ Failed to decode audio for ${soundName}:`, error);
+                        audioSystem.sounds[soundName] = createFallbackSound(soundName);
+                    });
+            }
+        })
+        .catch(error => {
+            console.error(`❌ Failed to load sound file ${filePath}:`, error);
+            audioSystem.sounds[soundName] = createFallbackSound(soundName);
+        });
+}
+
+function playAudioBuffer(audioBuffer) {
+    if (!audioSystem.enabled || !audioSystem.audioContext) return;
+    
+    const source = audioSystem.audioContext.createBufferSource();
+    const gainNode = audioSystem.audioContext.createGain();
+    
+    source.buffer = audioBuffer;
+    source.connect(gainNode);
+    gainNode.connect(audioSystem.audioContext.destination);
+    
+    // Apply volume
+    gainNode.gain.setValueAtTime(audioSystem.volume, audioSystem.audioContext.currentTime);
+    
+    source.start(audioSystem.audioContext.currentTime);
+}
+
+function createFallbackSound(soundName) {
+    // Create a very subtle fallback sound if the file doesn't load
+    return {
+        play: () => {
+            if (!audioSystem.enabled) return;
+            console.log(`Playing fallback sound for ${soundName}`);
+            // Very quiet, barely audible click as fallback
+            const oscillator = audioSystem.audioContext.createOscillator();
+            const gainNode = audioSystem.audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioSystem.audioContext.destination);
+            
+            oscillator.frequency.setValueAtTime(1000, audioSystem.audioContext.currentTime);
+            oscillator.type = 'sine';
+            
+            // Much quieter fallback sound
+            gainNode.gain.setValueAtTime(audioSystem.volume * 0.02, audioSystem.audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, audioSystem.audioContext.currentTime + 0.05);
+            
+            oscillator.start(audioSystem.audioContext.currentTime);
+            oscillator.stop(audioSystem.audioContext.currentTime + 0.05);
+        }
+    };
+}
+
+
+function playSound(soundName) {
+    console.log(`Playing sound: ${soundName}, enabled: ${audioSystem.enabled}, sound exists: ${!!audioSystem.sounds[soundName]}`);
+    if (audioSystem.sounds[soundName]) {
+        audioSystem.sounds[soundName].play();
+    } else {
+        console.warn(`Sound ${soundName} not loaded yet`);
+    }
+}
+
+function updateAudioSettings() {
+    localStorage.setItem('soundEnabled', audioSystem.enabled);
+    localStorage.setItem('soundVolume', audioSystem.volume);
+}
+
+function toggleSound() {
+    audioSystem.enabled = !audioSystem.enabled;
+    updateAudioSettings();
+    return audioSystem.enabled;
+}
+
+function setSoundVolume(volume) {
+    audioSystem.volume = Math.max(0, Math.min(1, volume));
+    updateAudioSettings();
 }
 
 // Album Image Upload Functions
