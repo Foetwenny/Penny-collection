@@ -1,9 +1,135 @@
 // Global variables
-let albums = JSON.parse(localStorage.getItem('pennyAlbums')) || [];
+let albums = []; // Will be loaded from IndexedDB
+let db = null; // IndexedDB database instance
 let currentAlbum = null;
 let currentImageData = null;
 let currentAnalysis = null;
 let isSharedView = false; // Track if we're viewing a shared album
+
+// IndexedDB Configuration
+const DB_NAME = 'PennyCollectionDB';
+const DB_VERSION = 1;
+const STORE_NAME = 'albums';
+
+// Initialize IndexedDB
+function initIndexedDB() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        
+        request.onerror = () => {
+            console.error('IndexedDB failed to open:', request.error);
+            reject(request.error);
+        };
+        
+        request.onsuccess = () => {
+            db = request.result;
+            console.log('IndexedDB opened successfully');
+            resolve(db);
+        };
+        
+        request.onupgradeneeded = (event) => {
+            const database = event.target.result;
+            
+            // Create object store for albums
+            if (!database.objectStoreNames.contains(STORE_NAME)) {
+                const store = database.createObjectStore(STORE_NAME, { keyPath: 'id' });
+                store.createIndex('name', 'name', { unique: false });
+                store.createIndex('createdAt', 'createdAt', { unique: false });
+                console.log('IndexedDB object store created');
+            }
+        };
+    });
+}
+
+// Save albums to IndexedDB
+async function saveAlbumsToIndexedDB() {
+    if (!db) {
+        console.error('IndexedDB not initialized');
+        return;
+    }
+    
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction([STORE_NAME], 'readwrite');
+        const store = transaction.objectStore(STORE_NAME);
+        
+        // Clear existing data
+        store.clear();
+        
+        // Add all albums
+        albums.forEach(album => {
+            store.add(album);
+        });
+        
+        transaction.oncomplete = () => {
+            console.log('Albums saved to IndexedDB');
+            resolve();
+        };
+        
+        transaction.onerror = () => {
+            console.error('Failed to save albums to IndexedDB:', transaction.error);
+            reject(transaction.error);
+        };
+    });
+}
+
+// Load albums from IndexedDB
+async function loadAlbumsFromIndexedDB() {
+    if (!db) {
+        console.error('IndexedDB not initialized');
+        return [];
+    }
+    
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction([STORE_NAME], 'readonly');
+        const store = transaction.objectStore(STORE_NAME);
+        const request = store.getAll();
+        
+        request.onsuccess = () => {
+            albums = request.result || [];
+            console.log(`Loaded ${albums.length} albums from IndexedDB`);
+            resolve(albums);
+        };
+        
+        request.onerror = () => {
+            console.error('Failed to load albums from IndexedDB:', request.error);
+            reject(request.error);
+        };
+    });
+}
+
+// Migrate data from localStorage to IndexedDB
+async function migrateFromLocalStorage() {
+    try {
+        // Check if we have data in localStorage
+        const localData = localStorage.getItem('pennyAlbums') || localStorage.getItem('pennyCollection');
+        
+        if (localData) {
+            const parsedData = JSON.parse(localData);
+            if (Array.isArray(parsedData) && parsedData.length > 0) {
+                console.log(`Migrating ${parsedData.length} albums from localStorage to IndexedDB`);
+                
+                // Set albums array
+                albums = parsedData;
+                
+                // Save to IndexedDB
+                await saveAlbumsToIndexedDB();
+                
+                // Clear localStorage (optional - we can keep it as backup)
+                // localStorage.removeItem('pennyAlbums');
+                // localStorage.removeItem('pennyCollection');
+                
+                console.log('Migration completed successfully');
+                return true;
+            }
+        }
+        
+        console.log('No localStorage data to migrate');
+        return false;
+    } catch (error) {
+        console.error('Migration failed:', error);
+        return false;
+    }
+}
 
 // Helper function to format dates for date input fields (prevents timezone issues)
 function formatDateForInput(dateValue) {
@@ -86,22 +212,42 @@ const editModal = document.getElementById('editModal');
 const emptyAlbumsState = document.getElementById('emptyAlbumsState');
 
 // Initialize the application
-document.addEventListener('DOMContentLoaded', function() {
-    initializeEventListeners();
-    initializeSearch();
-    checkForSharedAlbum();
-    renderAlbums();
-    showEmptyAlbumsStateIfNeeded();
-    initializeDarkMode();
-    initializeTheme();
-    initializeSortEventListeners();
-    updateCollectionNameDisplay();
-    applyCollectionNameFont();
-    applyCollectionNameSize();
-    applyCollectionNameColor();
-    applyCollectionNameBackground();
-    applyCollectionNameOutline();
-    applyCollectionNameIcon();
+document.addEventListener('DOMContentLoaded', async function() {
+    try {
+        // Initialize IndexedDB first
+        await initIndexedDB();
+        
+        // Try to migrate from localStorage if needed
+        const migrated = await migrateFromLocalStorage();
+        
+        // Load albums from IndexedDB
+        await loadAlbumsFromIndexedDB();
+        
+        // Initialize the rest of the app
+        initializeEventListeners();
+        initializeSearch();
+        checkForSharedAlbum();
+        renderAlbums();
+        showEmptyAlbumsStateIfNeeded();
+        initializeDarkMode();
+        initializeTheme();
+        initializeSortEventListeners();
+        updateCollectionNameDisplay();
+        applyCollectionNameFont();
+        applyCollectionNameSize();
+        applyCollectionNameColor();
+        applyCollectionNameBackground();
+        applyCollectionNameOutline();
+        applyCollectionNameIcon();
+        
+        if (migrated) {
+            showNotification('Collection migrated to new storage system successfully!', 'success');
+        }
+        
+    } catch (error) {
+        console.error('Failed to initialize IndexedDB:', error);
+        showNotification('Failed to initialize storage. Please refresh the page.', 'error');
+    }
     updateLastBackupDisplay();
     initializeAlbumImageUpload();
     initializeEditAlbumImageUpload();
@@ -186,9 +332,15 @@ function initializeDarkMode() {
 function initializeTheme() {
     const savedTheme = localStorage.getItem('selectedTheme') || 'default';
     
+    // Debug: Log what theme is being loaded
+    console.log('Loading theme:', savedTheme);
+    
     // Apply the saved theme
     if (savedTheme !== 'default') {
         document.documentElement.setAttribute('data-theme', savedTheme);
+    } else {
+        // Make sure default theme is applied (remove any existing theme)
+        document.documentElement.removeAttribute('data-theme');
     }
     
     // Update dark mode state to match theme
@@ -1508,7 +1660,7 @@ function saveEdit() {
         currentAlbum.updatedAt = new Date().toISOString();
         
         // Save and update
-        saveAlbumsToStorage();
+        saveAlbumsToStorage(); // Don't await - let it save in background
         renderAlbums();
         
         // Small delay to ensure DOM updates properly
@@ -2361,68 +2513,13 @@ function deletePennyFromAlbum(pennyId) {
 }
 
 
-function saveAlbumsToStorage() {
+// Save albums to IndexedDB (replaces localStorage)
+async function saveAlbumsToStorage() {
     try {
-        // Check storage size before saving
-        const dataToSave = JSON.stringify(albums);
-        const dataSize = new Blob([dataToSave]).size;
-        const maxSize = 4.5 * 1024 * 1024; // 4.5MB limit (leaving buffer)
-        
-        if (dataSize > maxSize) {
-            // Data is too large, compress images further
-            console.warn('Data size too large, compressing images...');
-            const compressedAlbums = albums.map(album => ({
-                ...album,
-                pennies: album.pennies.map(penny => ({
-                    ...penny,
-                    imageData: penny.imageData ? compressImageForStorage(penny.imageData) : null
-                }))
-            }));
-            
-            const compressedData = JSON.stringify(compressedAlbums);
-            localStorage.setItem('pennyAlbums', compressedData);
-            showNotification('Images were compressed to save storage space.', 'info');
-        } else {
-            localStorage.setItem('pennyAlbums', dataToSave);
-        }
+        await saveAlbumsToIndexedDB();
     } catch (error) {
-        if (error.name === 'QuotaExceededError') {
-            console.error('localStorage quota exceeded. Attempting to save essential data...');
-            
-            try {
-                // Save only essential album data without images
-                const essentialAlbums = albums.map(album => ({
-                    id: album.id,
-                    name: album.name,
-                    description: album.description,
-                    category: album.category,
-                    tripDate: album.tripDate,
-                    location: album.location,
-                    imageUrl: album.imageUrl,
-                    createdAt: album.createdAt,
-                    updatedAt: album.updatedAt,
-                    pennies: album.pennies.map(penny => ({
-                        id: penny.id,
-                        name: penny.name,
-                        location: penny.location,
-                        description: penny.description,
-                        dateCollected: penny.dateCollected,
-                        notes: penny.notes,
-                        addedAt: penny.addedAt,
-                        imageData: null // Remove images to save space
-                    }))
-                }));
-                
-                localStorage.setItem('pennyAlbums', JSON.stringify(essentialAlbums));
-                showNotification('Storage space was full. Images were removed to save your data.', 'warning');
-            } catch (retryError) {
-                console.error('Failed to save even essential data:', retryError);
-                showNotification('Unable to save data due to storage limitations. Please clear some browser data.', 'error');
-            }
-        } else {
-            console.error('Error saving to localStorage:', error);
-            showNotification('Error saving data to storage.', 'error');
-        }
+        console.error('Error saving to IndexedDB:', error);
+        showNotification('Error saving data to storage.', 'error');
     }
 }
 
