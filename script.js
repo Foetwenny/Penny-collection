@@ -95,11 +95,18 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeDarkMode();
     initializeSortEventListeners();
     updateCollectionNameDisplay();
+    applyCollectionNameFont();
+    applyCollectionNameSize();
+    applyCollectionNameColor();
+    applyCollectionNameBackground();
+    applyCollectionNameOutline();
+    applyCollectionNameIcon();
     updateLastBackupDisplay();
     initializeAlbumImageUpload();
     initializeEditAlbumImageUpload();
     initializeEditPennyImageUpload();
     initializeAudioSystem();
+    initializeBoldFormatting();
     updateCollectionSummary();
     
     // Apply default sort
@@ -298,9 +305,14 @@ function performSearch() {
                 description: album.description && album.description.toLowerCase().includes(searchTerm),
                 categories: categoryMatch,
                 location: album.location && album.location.toLowerCase().includes(searchTerm),
-                pennies: album.pennies.filter(penny => 
-                    penny.description && penny.description.toLowerCase().includes(searchTerm)
-                )
+                pennies: album.pennies.filter(penny => {
+                    if (!penny.description) return false;
+                    // Strip HTML tags for searching
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = penny.description;
+                    const plainText = tempDiv.textContent || tempDiv.innerText || '';
+                    return plainText.toLowerCase().includes(searchTerm.toLowerCase());
+                })
             };
             
             const hasMatches = matches.name || matches.description || matches.categories || matches.location || matches.pennies.length > 0;
@@ -617,8 +629,28 @@ function showAllAlbums() {
 function highlightSearchTerm(text, searchTerm) {
     if (!searchTerm || !text) return text;
     
+    // For HTML content, we need to be more careful about highlighting
+    // First, strip HTML tags for searching, then reapply them
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = text;
+    const plainText = tempDiv.textContent || tempDiv.innerText || '';
+    
+    if (!plainText.toLowerCase().includes(searchTerm.toLowerCase())) {
+        return text; // No match found
+    }
+    
+    // Create a more sophisticated highlighting that preserves HTML structure
     const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-    return text.replace(regex, '<mark class="search-highlight">$1</mark>');
+    const highlightedText = plainText.replace(regex, '<mark class="search-highlight">$1</mark>');
+    
+    // If the original text was plain text, return the highlighted version
+    if (text === plainText) {
+        return highlightedText;
+    }
+    
+    // For HTML content, we'll return the original text with a note that it contains matches
+    // This is a simplified approach - a more sophisticated version would parse and rebuild the HTML
+    return text;
 }
 
 // Menu action functions (placeholder implementations)
@@ -1085,6 +1117,102 @@ function isGoogleAIConfigured() {
     return window.GOOGLE_AI_CONFIG && window.GOOGLE_AI_CONFIG.apiKey;
 }
 
+// Bold Formatting Functions
+function initializeBoldFormatting() {
+    // Add Ctrl+B support to description contenteditable divs
+    const descriptionFields = ['pennyDescription', 'editDescription'];
+    
+    descriptionFields.forEach(fieldId => {
+        const field = document.getElementById(fieldId);
+        if (field) {
+            field.addEventListener('keydown', handleBoldShortcut);
+        }
+    });
+}
+
+function handleBoldShortcut(event) {
+    // Check for Ctrl+B
+    if (event.ctrlKey && event.key === 'b') {
+        event.preventDefault();
+        toggleBoldFormatting(event.target);
+    }
+}
+
+function toggleBoldFormatting(editor) {
+    const selection = window.getSelection();
+    
+    if (selection.rangeCount === 0) return;
+    
+    const range = selection.getRangeAt(0);
+    
+    if (range.collapsed) {
+        // No selection - toggle bold mode for next typing
+        // Check if we're already in a bold element
+        const parentElement = range.commonAncestorContainer.parentElement;
+        if (parentElement && parentElement.tagName === 'STRONG') {
+            // We're in bold mode, exit it
+            const textNode = document.createTextNode(parentElement.textContent);
+            parentElement.parentNode.replaceChild(textNode, parentElement);
+            range.setStart(textNode, textNode.textContent.length);
+            range.setEnd(textNode, textNode.textContent.length);
+        } else {
+            // Enter bold mode - create a bold element
+            const boldElement = document.createElement('strong');
+            range.insertNode(boldElement);
+            range.setStart(boldElement, 0);
+            range.setEnd(boldElement, 0);
+        }
+    } else {
+        // Text is selected - toggle bold for selection
+        const selectedText = range.toString();
+        const parentElement = range.commonAncestorContainer.parentElement;
+        
+        // Check if selection is already in a bold element
+        if (parentElement && parentElement.tagName === 'STRONG') {
+            // Remove bold formatting
+            const textNode = document.createTextNode(selectedText);
+            parentElement.parentNode.replaceChild(textNode, parentElement);
+            range.setStart(textNode, 0);
+            range.setEnd(textNode, textNode.textContent.length);
+        } else {
+            // Add bold formatting
+            const boldElement = document.createElement('strong');
+            range.surroundContents(boldElement);
+            range.setStart(boldElement, 0);
+            range.setEnd(boldElement, boldElement.textContent.length);
+        }
+    }
+    
+    // Update selection
+    selection.removeAllRanges();
+    selection.addRange(range);
+}
+
+// Helper function to get HTML content from rich text editor
+function getRichTextContent(editorId) {
+    const editor = document.getElementById(editorId);
+    if (editor) {
+        return editor.innerHTML;
+    }
+    return '';
+}
+
+// Helper function to set HTML content in rich text editor
+function setRichTextContent(editorId, content) {
+    const editor = document.getElementById(editorId);
+    if (editor) {
+        editor.innerHTML = content || '';
+    }
+}
+
+// Helper function to clear rich text editor
+function clearRichTextContent(editorId) {
+    const editor = document.getElementById(editorId);
+    if (editor) {
+        editor.innerHTML = '';
+    }
+}
+
 // Real AI Analysis with Gemini API
 async function analyzeImage() {
     if (!currentImageData) return;
@@ -1185,7 +1313,7 @@ async function analyzeImage() {
         
         // Now display the description in the modal
         if (modalDescriptionResult) {
-            modalDescriptionResult.textContent = description;
+            modalDescriptionResult.innerHTML = description;
             console.log('Setting description in modal:', description);
             console.log('Description length:', description.length);
         }
@@ -1267,7 +1395,7 @@ function openEditModal() {
     // Populate modal with current analysis data
     document.getElementById('editName').value = `Elongated Penny - ${currentAnalysis.location}`;
     document.getElementById('editLocation').value = currentAnalysis.location;
-    document.getElementById('editDescription').value = currentAnalysis.description;
+    setRichTextContent('editDescription', currentAnalysis.description);
     document.getElementById('editDate').value = new Date().toISOString().split('T')[0];
     document.getElementById('editNotes').value = '';
 
@@ -1299,7 +1427,7 @@ function saveEdit() {
         // Update penny data
         penny.name = document.getElementById('editName').value;
         penny.location = document.getElementById('editLocation').value;
-        penny.description = document.getElementById('editDescription').value;
+        penny.description = getRichTextContent('editDescription');
         penny.dateCollected = document.getElementById('editDate').value;
         penny.notes = document.getElementById('editNotes').value;
         
@@ -1346,7 +1474,7 @@ function saveEdit() {
         if (penny) {
             penny.name = document.getElementById('editName').value;
             penny.location = document.getElementById('editLocation').value;
-            penny.description = document.getElementById('editDescription').value;
+            penny.description = getRichTextContent('editDescription');
             penny.dateCollected = document.getElementById('editDate').value;
             penny.notes = document.getElementById('editNotes').value;
             
@@ -1367,14 +1495,14 @@ function saveEdit() {
             ...currentAnalysis,
             name: document.getElementById('editName').value,
             location: document.getElementById('editLocation').value,
-            description: document.getElementById('editDescription').value,
+            description: getRichTextContent('editDescription'),
             dateCollected: document.getElementById('editDate').value,
             notes: document.getElementById('editNotes').value
         };
 
         // Update the display
         document.getElementById('locationResult').textContent = currentAnalysis.location;
-        document.getElementById('descriptionResult').textContent = currentAnalysis.description;
+        document.getElementById('descriptionResult').innerHTML = currentAnalysis.description;
         document.getElementById('dateResult').textContent = currentAnalysis.date;
     }
 
@@ -1534,9 +1662,14 @@ function openAlbumView(albumId) {
             (currentAlbum.description && currentAlbum.description.toLowerCase().includes(currentSearchTerm.toLowerCase())) ||
             categoryMatch ||
             (currentAlbum.location && currentAlbum.location.toLowerCase().includes(currentSearchTerm.toLowerCase())) ||
-            currentAlbum.pennies.some(penny => 
-                penny.description && penny.description.toLowerCase().includes(currentSearchTerm.toLowerCase())
-            );
+            currentAlbum.pennies.some(penny => {
+                if (!penny.description) return false;
+                // Strip HTML tags for searching
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = penny.description;
+                const plainText = tempDiv.textContent || tempDiv.innerText || '';
+                return plainText.toLowerCase().includes(currentSearchTerm.toLowerCase());
+            });
         
         if (hasMatches) {
             // We're opening from search results, preserve the search term
@@ -1688,7 +1821,14 @@ function renderAlbumPenniesWithSearchHighlights() {
     const nonMatchingPennies = [];
     
     currentAlbum.pennies.forEach(penny => {
-        const isMatch = penny.description && penny.description.toLowerCase().includes(searchTerm.toLowerCase());
+        let isMatch = false;
+        if (penny.description) {
+            // Strip HTML tags for searching
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = penny.description;
+            const plainText = tempDiv.textContent || tempDiv.innerText || '';
+            isMatch = plainText.toLowerCase().includes(searchTerm.toLowerCase());
+        }
         if (isMatch) {
             matchingPennies.push(penny);
         } else {
@@ -1711,7 +1851,14 @@ function renderAlbumPenniesWithSearchHighlights() {
     }
     
     penniesGrid.innerHTML = reorderedPennies.map(penny => {
-        const isMatch = penny.description && penny.description.toLowerCase().includes(searchTerm.toLowerCase());
+        let isMatch = false;
+        if (penny.description) {
+            // Strip HTML tags for searching
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = penny.description;
+            const plainText = tempDiv.textContent || tempDiv.innerText || '';
+            isMatch = plainText.toLowerCase().includes(searchTerm.toLowerCase());
+        }
         
         // Highlight matching text
         const highlightedName = highlightSearchTerm(penny.name, searchTerm);
@@ -1857,7 +2004,7 @@ function closeAddPennyModal() {
     
     if (pennyName) pennyName.value = '';
     if (pennyLocation) pennyLocation.value = '';
-    if (pennyDescription) pennyDescription.value = '';
+    clearRichTextContent('pennyDescription');
     if (pennyDate) pennyDate.value = '';
     if (pennyNotes) pennyNotes.value = '';
 }
@@ -1877,7 +2024,7 @@ function saveManualPenny() {
     // Validate required fields
     const name = document.getElementById('pennyName').value.trim();
     const location = document.getElementById('pennyLocation').value.trim();
-    const description = document.getElementById('pennyDescription').value.trim();
+    const description = getRichTextContent('pennyDescription').trim();
     
     if (!name || !location || !description) {
         showNotification('Please fill in all required fields', 'error');
@@ -2104,7 +2251,7 @@ function editPennyInAlbum(pennyId) {
     // Populate edit form
     document.getElementById('editName').value = penny.name;
     document.getElementById('editLocation').value = penny.location;
-    document.getElementById('editDescription').value = penny.description;
+    setRichTextContent('editDescription', penny.description);
     
     // Fix date handling to prevent timezone issues
     document.getElementById('editDate').value = formatDateForInput(penny.dateCollected);
@@ -2835,6 +2982,254 @@ function setCollectionName(newName) {
     updateCollectionNameDisplay();
 }
 
+// Collection name styling functions
+let collectionNameFont = localStorage.getItem('collectionNameFont') || 'Inter';
+let collectionNameSize = localStorage.getItem('collectionNameSize') || '1.5rem';
+let collectionNameColor = localStorage.getItem('collectionNameColor') || '#2c3e50';
+let collectionNameBackground = localStorage.getItem('collectionNameBackground') || 'default';
+let collectionNameOutline = localStorage.getItem('collectionNameOutline') || 'none';
+let collectionNameIcon = localStorage.getItem('collectionNameIcon') || 'none';
+
+function setCollectionNameFont(fontName) {
+    collectionNameFont = fontName;
+    localStorage.setItem('collectionNameFont', collectionNameFont);
+    applyCollectionNameFont();
+}
+
+function setCollectionNameSize(size) {
+    collectionNameSize = size;
+    localStorage.setItem('collectionNameSize', collectionNameSize);
+    applyCollectionNameSize();
+}
+
+function setCollectionNameColor(color) {
+    collectionNameColor = color;
+    localStorage.setItem('collectionNameColor', collectionNameColor);
+    applyCollectionNameColor();
+}
+
+function setCollectionNameBackground(background) {
+    collectionNameBackground = background;
+    localStorage.setItem('collectionNameBackground', collectionNameBackground);
+    applyCollectionNameBackground();
+}
+
+function setCollectionNameOutline(outline) {
+    collectionNameOutline = outline;
+    localStorage.setItem('collectionNameOutline', collectionNameOutline);
+    applyCollectionNameOutline();
+}
+
+function setCollectionNameIcon(icon) {
+    collectionNameIcon = icon;
+    localStorage.setItem('collectionNameIcon', collectionNameIcon);
+    applyCollectionNameIcon();
+}
+
+function applyCollectionNameFont() {
+    const collectionNameElement = document.getElementById('collectionNameDisplay');
+    if (collectionNameElement) {
+        collectionNameElement.style.fontFamily = `'${collectionNameFont}', sans-serif`;
+    }
+}
+
+function applyCollectionNameSize() {
+    const collectionNameElement = document.getElementById('collectionNameDisplay');
+    if (collectionNameElement) {
+        collectionNameElement.style.fontSize = collectionNameSize;
+    }
+}
+
+function applyCollectionNameColor() {
+    const collectionNameElement = document.getElementById('collectionNameDisplay');
+    if (collectionNameElement) {
+        collectionNameElement.style.color = collectionNameColor;
+    }
+}
+
+function applyCollectionNameBackground() {
+    const container = document.querySelector('.collection-name-container');
+    if (container) {
+        // Remove all background classes
+        container.classList.remove('bg-default', 'bg-sunset', 'bg-ocean', 'bg-forest', 'bg-purple', 'bg-fire', 'bg-ice', 'bg-gold', 'bg-silver');
+        // Add the selected background class
+        container.classList.add(`bg-${collectionNameBackground}`);
+    }
+}
+
+function applyCollectionNameOutline() {
+    const collectionNameElement = document.getElementById('collectionNameDisplay');
+    if (collectionNameElement) {
+        // Remove all outline classes
+        collectionNameElement.classList.remove('outline-none', 'outline-white', 'outline-black');
+        // Add the selected outline class
+        collectionNameElement.classList.add(`outline-${collectionNameOutline}`);
+    }
+}
+
+function applyCollectionNameIcon() {
+    const collectionNameElement = document.getElementById('collectionNameDisplay');
+    const h2Element = collectionNameElement.parentElement;
+    
+    if (collectionNameElement && h2Element) {
+        // Remove existing FontAwesome icon (the default book icon)
+        const existingFAIcon = h2Element.querySelector('.fas');
+        if (existingFAIcon) {
+            existingFAIcon.remove();
+        }
+        
+        // Remove existing custom icon if any
+        const existingIcon = h2Element.querySelector('.collection-icon');
+        if (existingIcon) {
+            existingIcon.remove();
+        }
+        
+        // Add new icon if not 'none'
+        if (collectionNameIcon !== 'none') {
+            const iconElement = document.createElement('span');
+            iconElement.className = 'collection-icon';
+            iconElement.textContent = getIconEmoji(collectionNameIcon);
+            h2Element.insertBefore(iconElement, collectionNameElement);
+        }
+    }
+}
+
+function getIconEmoji(iconName) {
+    const icons = {
+        'book': '📖',
+        'coins': '🪙',
+        'globe': '🌍',
+        'heart': '❤️',
+        'star': '⭐',
+        'trophy': '🏆',
+        'airplane': '✈️',
+        'gem': '💎'
+    };
+    return icons[iconName] || '';
+}
+
+function changeCollectionNameFont(fontName) {
+    // Apply font immediately for preview
+    const collectionNameElement = document.getElementById('collectionNameDisplay');
+    if (collectionNameElement) {
+        collectionNameElement.style.fontFamily = `'${fontName}', sans-serif`;
+    }
+}
+
+function changeCollectionNameSize(size) {
+    // Apply size immediately for preview
+    const collectionNameElement = document.getElementById('collectionNameDisplay');
+    if (collectionNameElement) {
+        collectionNameElement.style.fontSize = size;
+    }
+}
+
+function changeCollectionNameColor(color) {
+    // Apply color immediately for preview
+    const collectionNameElement = document.getElementById('collectionNameDisplay');
+    if (collectionNameElement) {
+        collectionNameElement.style.color = color;
+    }
+    
+    // Save the color choice immediately
+    collectionNameColor = color;
+    localStorage.setItem('collectionNameColor', collectionNameColor);
+    
+    // Update selected state in color options
+    document.querySelectorAll('.color-option').forEach(option => {
+        option.classList.remove('selected');
+        if (option.dataset.color === color) {
+            option.classList.add('selected');
+        }
+    });
+}
+
+function changeCollectionNameBackground(background) {
+    // Apply background immediately for preview
+    const container = document.querySelector('.collection-name-container');
+    if (container) {
+        // Remove all background classes
+        container.classList.remove('bg-default', 'bg-sunset', 'bg-ocean', 'bg-forest', 'bg-purple', 'bg-fire', 'bg-ice', 'bg-gold', 'bg-silver');
+        // Add the selected background class
+        container.classList.add(`bg-${background}`);
+    }
+    
+    // Save the background choice immediately
+    collectionNameBackground = background;
+    localStorage.setItem('collectionNameBackground', collectionNameBackground);
+    
+    // Update selected state in background options
+    document.querySelectorAll('.background-option').forEach(option => {
+        option.classList.remove('selected');
+        if (option.dataset.background === background) {
+            option.classList.add('selected');
+        }
+    });
+}
+
+function changeCollectionNameOutline(outline) {
+    // Apply outline immediately for preview
+    const collectionNameElement = document.getElementById('collectionNameDisplay');
+    if (collectionNameElement) {
+        // Remove all outline classes
+        collectionNameElement.classList.remove('outline-none', 'outline-white', 'outline-black');
+        // Add the selected outline class
+        collectionNameElement.classList.add(`outline-${outline}`);
+    }
+    
+    // Save the outline choice immediately
+    collectionNameOutline = outline;
+    localStorage.setItem('collectionNameOutline', collectionNameOutline);
+    
+    // Update selected state in outline options
+    document.querySelectorAll('.outline-option').forEach(option => {
+        option.classList.remove('selected');
+        if (option.dataset.outline === outline) {
+            option.classList.add('selected');
+        }
+    });
+}
+
+function changeCollectionNameIcon(icon) {
+    // Apply icon immediately for preview
+    const collectionNameElement = document.getElementById('collectionNameDisplay');
+    const h2Element = collectionNameElement.parentElement;
+    
+    if (collectionNameElement && h2Element) {
+        // Remove existing FontAwesome icon (the default book icon)
+        const existingFAIcon = h2Element.querySelector('.fas');
+        if (existingFAIcon) {
+            existingFAIcon.remove();
+        }
+        
+        // Remove existing custom icon if any
+        const existingIcon = h2Element.querySelector('.collection-icon');
+        if (existingIcon) {
+            existingIcon.remove();
+        }
+        
+        // Add new icon if not 'none'
+        if (icon !== 'none') {
+            const iconElement = document.createElement('span');
+            iconElement.className = 'collection-icon';
+            iconElement.textContent = getIconEmoji(icon);
+            h2Element.insertBefore(iconElement, collectionNameElement);
+        }
+    }
+    
+    // Save the icon choice immediately
+    collectionNameIcon = icon;
+    localStorage.setItem('collectionNameIcon', collectionNameIcon);
+    
+    // Update selected state in icon options
+    document.querySelectorAll('.icon-option').forEach(option => {
+        option.classList.remove('selected');
+        if (option.dataset.icon === icon) {
+            option.classList.add('selected');
+        }
+    });
+}
+
 function openCollectionSettings() {
     const currentName = collectionName;
     const modal = document.createElement('div');
@@ -2853,6 +3248,157 @@ function openCollectionSettings() {
                     <label for="collectionNameInput">Collection Name:</label>
                     <input type="text" id="collectionNameInput" value="${currentName}" placeholder="Your Albums" maxlength="50">
                     <small>This name will appear at the top of your album collection and will be included when you export/share your collection.</small>
+                </div>
+                <div class="form-group">
+                    <label for="collectionNameFont">Font Style:</label>
+                    <select id="collectionNameFont" class="font-selector" onchange="changeCollectionNameFont(this.value)">
+                        <option value="Inter" style="font-family: 'Inter', sans-serif;">Inter</option>
+                        <option value="Playfair Display" style="font-family: 'Playfair Display', serif;">Playfair Display</option>
+                        <option value="Dancing Script" style="font-family: 'Dancing Script', cursive;">Dancing Script</option>
+                        <option value="Great Vibes" style="font-family: 'Great Vibes', cursive;">Great Vibes</option>
+                        <option value="Merriweather" style="font-family: 'Merriweather', serif;">Merriweather</option>
+                        <option value="Roboto" style="font-family: 'Roboto', sans-serif;">Roboto</option>
+                        <option value="Bebas Neue" style="font-family: 'Bebas Neue', sans-serif;">Bebas Neue</option>
+                        <option value="Oswald" style="font-family: 'Oswald', sans-serif;">Oswald</option>
+                        <option value="Lobster" style="font-family: 'Lobster', cursive;">Lobster</option>
+                        <option value="Pacifico" style="font-family: 'Pacifico', cursive;">Pacifico</option>
+                        <option value="Righteous" style="font-family: 'Righteous', cursive;">Righteous</option>
+                        <option value="Fredoka One" style="font-family: 'Fredoka One', cursive;">Fredoka One</option>
+                        <option value="Comfortaa" style="font-family: 'Comfortaa', sans-serif;">Comfortaa</option>
+                        <option value="Quicksand" style="font-family: 'Quicksand', sans-serif;">Quicksand</option>
+                        <option value="Montserrat" style="font-family: 'Montserrat', sans-serif;">Montserrat</option>
+                        <option value="Source Code Pro" style="font-family: 'Source Code Pro', monospace;">Source Code Pro</option>
+                    </select>
+                    <small>Choose the font style for your collection name display.</small>
+                </div>
+                <div class="form-group">
+                    <label for="collectionNameSize">Font Size:</label>
+                    <select id="collectionNameSize" class="size-selector" onchange="changeCollectionNameSize(this.value)">
+                        <option value="1.2rem">Small</option>
+                        <option value="1.5rem">Medium</option>
+                        <option value="1.8rem">Large</option>
+                        <option value="2.2rem">Extra Large</option>
+                        <option value="2.8rem">Huge</option>
+                    </select>
+                    <small>Choose the size of your collection name.</small>
+                </div>
+                <div class="form-group">
+                    <label for="collectionNameColor">Text Color:</label>
+                    <div class="color-options">
+                        <div class="color-option" data-color="#000000" style="background-color: #000000;" onclick="changeCollectionNameColor('#000000')" title="Black"></div>
+                        <div class="color-option" data-color="#ffffff" style="background-color: #ffffff; border: 1px solid #ccc;" onclick="changeCollectionNameColor('#ffffff')" title="White"></div>
+                        <div class="color-option" data-color="#2c3e50" style="background-color: #2c3e50;" onclick="changeCollectionNameColor('#2c3e50')" title="Dark Blue"></div>
+                        <div class="color-option" data-color="#8b4513" style="background-color: #8b4513;" onclick="changeCollectionNameColor('#8b4513')" title="Brown"></div>
+                        <div class="color-option" data-color="#d4af37" style="background-color: #d4af37;" onclick="changeCollectionNameColor('#d4af37')" title="Gold"></div>
+                        <div class="color-option" data-color="#c0392b" style="background-color: #c0392b;" onclick="changeCollectionNameColor('#c0392b')" title="Red"></div>
+                        <div class="color-option" data-color="#27ae60" style="background-color: #27ae60;" onclick="changeCollectionNameColor('#27ae60')" title="Green"></div>
+                        <div class="color-option" data-color="#8e44ad" style="background-color: #8e44ad;" onclick="changeCollectionNameColor('#8e44ad')" title="Purple"></div>
+                        <div class="color-option" data-color="#e67e22" style="background-color: #e67e22;" onclick="changeCollectionNameColor('#e67e22')" title="Orange"></div>
+                        <div class="color-option" data-color="#34495e" style="background-color: #34495e;" onclick="changeCollectionNameColor('#34495e')" title="Dark Gray"></div>
+                    </div>
+                    <small>Choose the color for your collection name text.</small>
+                </div>
+                <div class="form-group">
+                    <label for="collectionNameBackground">Background Style:</label>
+                    <div class="background-options">
+                        <div class="background-option" data-background="default" onclick="changeCollectionNameBackground('default')" title="Default">
+                            <div class="bg-preview default-bg"></div>
+                            <span>Default</span>
+                        </div>
+                        <div class="background-option" data-background="sunset" onclick="changeCollectionNameBackground('sunset')" title="Sunset">
+                            <div class="bg-preview sunset-bg"></div>
+                            <span>Sunset</span>
+                        </div>
+                        <div class="background-option" data-background="ocean" onclick="changeCollectionNameBackground('ocean')" title="Ocean">
+                            <div class="bg-preview ocean-bg"></div>
+                            <span>Ocean</span>
+                        </div>
+                        <div class="background-option" data-background="forest" onclick="changeCollectionNameBackground('forest')" title="Forest">
+                            <div class="bg-preview forest-bg"></div>
+                            <span>Forest</span>
+                        </div>
+                        <div class="background-option" data-background="purple" onclick="changeCollectionNameBackground('purple')" title="Purple">
+                            <div class="bg-preview purple-bg"></div>
+                            <span>Purple</span>
+                        </div>
+                        <div class="background-option" data-background="fire" onclick="changeCollectionNameBackground('fire')" title="Fire">
+                            <div class="bg-preview fire-bg"></div>
+                            <span>Fire</span>
+                        </div>
+                        <div class="background-option" data-background="ice" onclick="changeCollectionNameBackground('ice')" title="Ice">
+                            <div class="bg-preview ice-bg"></div>
+                            <span>Ice</span>
+                        </div>
+                        <div class="background-option" data-background="gold" onclick="changeCollectionNameBackground('gold')" title="Gold">
+                            <div class="bg-preview gold-bg"></div>
+                            <span>Gold</span>
+                        </div>
+                        <div class="background-option" data-background="silver" onclick="changeCollectionNameBackground('silver')" title="Silver">
+                            <div class="bg-preview silver-bg"></div>
+                            <span>Silver</span>
+                        </div>
+                    </div>
+                    <small>Choose a background style for your collection name container.</small>
+                </div>
+                <div class="form-group">
+                    <label for="collectionNameOutline">Text Outline:</label>
+                    <div class="outline-options">
+                        <div class="outline-option" data-outline="none" onclick="changeCollectionNameOutline('none')" title="No Outline">
+                            <div class="outline-preview outline-none">Aa</div>
+                            <span>None</span>
+                        </div>
+                        <div class="outline-option" data-outline="white" onclick="changeCollectionNameOutline('white')" title="White Outline">
+                            <div class="outline-preview outline-white">Aa</div>
+                            <span>White</span>
+                        </div>
+                        <div class="outline-option" data-outline="black" onclick="changeCollectionNameOutline('black')" title="Black Outline">
+                            <div class="outline-preview outline-black">Aa</div>
+                            <span>Black</span>
+                        </div>
+                    </div>
+                    <small>Add an outline to make text more readable on colorful backgrounds.</small>
+                </div>
+                <div class="form-group">
+                    <label for="collectionNameIcon">Icon:</label>
+                    <div class="icon-options">
+                        <div class="icon-option" data-icon="none" onclick="changeCollectionNameIcon('none')" title="No Icon">
+                            <div class="icon-preview">—</div>
+                            <span>None</span>
+                        </div>
+                        <div class="icon-option" data-icon="book" onclick="changeCollectionNameIcon('book')" title="Book">
+                            <div class="icon-preview">📖</div>
+                            <span>Book</span>
+                        </div>
+                        <div class="icon-option" data-icon="coins" onclick="changeCollectionNameIcon('coins')" title="Coins">
+                            <div class="icon-preview">🪙</div>
+                            <span>Coins</span>
+                        </div>
+                        <div class="icon-option" data-icon="globe" onclick="changeCollectionNameIcon('globe')" title="Globe">
+                            <div class="icon-preview">🌍</div>
+                            <span>Globe</span>
+                        </div>
+                        <div class="icon-option" data-icon="heart" onclick="changeCollectionNameIcon('heart')" title="Heart">
+                            <div class="icon-preview">❤️</div>
+                            <span>Heart</span>
+                        </div>
+                        <div class="icon-option" data-icon="star" onclick="changeCollectionNameIcon('star')" title="Star">
+                            <div class="icon-preview">⭐</div>
+                            <span>Star</span>
+                        </div>
+                        <div class="icon-option" data-icon="trophy" onclick="changeCollectionNameIcon('trophy')" title="Trophy">
+                            <div class="icon-preview">🏆</div>
+                            <span>Trophy</span>
+                        </div>
+                        <div class="icon-option" data-icon="airplane" onclick="changeCollectionNameIcon('airplane')" title="Airplane">
+                            <div class="icon-preview">✈️</div>
+                            <span>Airplane</span>
+                        </div>
+                        <div class="icon-option" data-icon="gem" onclick="changeCollectionNameIcon('gem')" title="Gem">
+                            <div class="icon-preview">💎</div>
+                            <span>Gem</span>
+                        </div>
+                    </div>
+                    <small>Choose an icon to display before your collection name.</small>
                 </div>
                 <div class="form-group">
                     <h4>Quick Options:</h4>
@@ -2874,6 +3420,51 @@ function openCollectionSettings() {
     document.body.appendChild(modal);
     modal.style.display = 'block';
     document.getElementById('collectionNameInput').focus();
+    
+    // Set the current values in the dropdowns and color options
+    setTimeout(() => {
+        const fontSelect = document.getElementById('collectionNameFont');
+        const sizeSelect = document.getElementById('collectionNameSize');
+        
+        if (fontSelect) {
+            fontSelect.value = collectionNameFont;
+        }
+        if (sizeSelect) {
+            sizeSelect.value = collectionNameSize;
+        }
+        
+        // Set selected color option
+        document.querySelectorAll('.color-option').forEach(option => {
+            option.classList.remove('selected');
+            if (option.dataset.color === collectionNameColor) {
+                option.classList.add('selected');
+            }
+        });
+        
+        // Set selected background option
+        document.querySelectorAll('.background-option').forEach(option => {
+            option.classList.remove('selected');
+            if (option.dataset.background === collectionNameBackground) {
+                option.classList.add('selected');
+            }
+        });
+        
+        // Set selected outline option
+        document.querySelectorAll('.outline-option').forEach(option => {
+            option.classList.remove('selected');
+            if (option.dataset.outline === collectionNameOutline) {
+                option.classList.add('selected');
+            }
+        });
+        
+        // Set selected icon option
+        document.querySelectorAll('.icon-option').forEach(option => {
+            option.classList.remove('selected');
+            if (option.dataset.icon === collectionNameIcon) {
+                option.classList.add('selected');
+            }
+        });
+    }, 100);
 }
 
 function closeCollectionSettingsModal() {
@@ -2889,7 +3480,11 @@ function setQuickName(name) {
 
 function saveCollectionSettings() {
     const nameInput = document.getElementById('collectionNameInput');
+    const fontSelect = document.getElementById('collectionNameFont');
+    const sizeSelect = document.getElementById('collectionNameSize');
     const newName = nameInput.value.trim();
+    const selectedFont = fontSelect.value;
+    const selectedSize = sizeSelect.value;
     
     if (newName.length === 0) {
         showNotification('Collection name cannot be empty', 'error');
@@ -2897,6 +3492,8 @@ function saveCollectionSettings() {
     }
     
     setCollectionName(newName);
+    setCollectionNameFont(selectedFont);
+    setCollectionNameSize(selectedSize);
     closeCollectionSettingsModal();
     showNotification('Collection settings saved!', 'success');
 }

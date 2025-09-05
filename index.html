@@ -6,7 +6,7 @@
     <title>Elongated Penny Collection</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="album-styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;700;900&family=Dancing+Script:wght@400;600;700&family=Great+Vibes&family=Merriweather:wght@300;400;700&family=Roboto:wght@300;400;500;700&family=Bebas+Neue&family=Oswald:wght@300;400;500;600;700&family=Lobster&family=Pacifico&family=Righteous&family=Fredoka+One&family=Comfortaa:wght@300;400;500;600;700&family=Quicksand:wght@300;400;500;600;700&family=Montserrat:wght@300;400;500;600;700&family=Source+Code+Pro:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <!-- Google AI Configuration -->
@@ -122,9 +122,11 @@
             <!-- Album Management Section -->
             <section class="album-section">
                 <div class="album-header">
-                    <h2>
-                        <i class="fas fa-book"></i> <span id="collectionNameDisplay">Your Albums</span>
-                    </h2>
+                    <div class="collection-name-container">
+                        <h2>
+                            <i class="fas fa-book"></i> <span id="collectionNameDisplay">Your Albums</span>
+                        </h2>
+                    </div>
                 </div>
                 
                 <!-- Collection Summary -->
@@ -436,7 +438,7 @@
                             </div>
                             <div class="form-group">
                                 <label for="editDescription">Description:</label>
-                                <textarea id="editDescription" rows="4" required></textarea>
+                                <div id="editDescription" class="rich-text-editor" contenteditable="true" data-placeholder="Describe the penny design and details..."></div>
                             </div>
                             <div class="form-group">
                                 <label for="editDate">Date Collected:</label>
@@ -669,7 +671,7 @@
                                 </div>
                                 <div class="form-group">
                                     <label for="pennyDescription">Description:</label>
-                                    <textarea id="pennyDescription" rows="3" required placeholder="Describe the penny design and details..."></textarea>
+                                    <div id="pennyDescription" class="rich-text-editor" contenteditable="true" data-placeholder="Describe the penny design and details..."></div>
                                 </div>
                                 <div class="form-group">
                                     <label for="pennyDate">Date Collected:</label>
@@ -727,7 +729,7 @@
                             <p><strong>Location:</strong> <span id="pennyViewLocation"></span></p>
                             <p><strong>Date Collected:</strong> <span id="pennyViewDate"></span></p>
                             <p><strong>Description:</strong></p>
-                            <p id="pennyViewDescription"></p>
+                            <p id="pennyViewDescription" class="penny-description"></p>
                             <p style="display: none;"><strong>Personal Notes:</strong></p>
                             <p id="pennyViewNotes" style="display: none;"></p>
                         </div>
@@ -1308,6 +1310,7 @@
                                     </label>
                                     <p class="preference-description">Switch between light and dark themes</p>
                                 </div>
+                                
                             </div>
                         </div>
                     </div>
