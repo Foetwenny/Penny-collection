@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Image Change</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-container { max-width: 600px; margin: 0 auto; }
+        .penny-card { border: 1px solid #ccc; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .penny-image { max-width: 200px; max-height: 150px; border-radius: 4px; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; }
+        .modal-content { background: white; margin: 5% auto; padding: 20px; width: 80%; max-width: 500px; border-radius: 8px; }
+        .form-group { margin: 15px 0; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+        .form-group input, .form-group textarea { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        .btn { padding: 10px 20px; margin: 5px; border: none; border-radius: 4px; cursor: pointer; }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-secondary { background: #6c757d; color: white; }
+        .upload-area { border: 2px dashed #ccc; padding: 20px; text-align: center; margin: 10px 0; border-radius: 8px; }
+        .upload-area.dragover { border-color: #007bff; background: #f8f9fa; }
+        .preview { margin: 10px 0; text-align: center; }
+        .preview img { max-width: 200px; max-height: 150px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Test Image Change Functionality</h1>
+        
+        <div class="penny-card">
+            <h3>Test Penny</h3>
+            <img id="pennyImage" src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPk9yaWdpbmFsIEltYWdlPC90ZXh0Pjwvc3ZnPg==" alt="Original Image" class="penny-image">
+            <p>Location: Test Location</p>
+            <button class="btn btn-primary" onclick="openEditModal()">Edit Penny</button>
+        </div>
+        
+        <div id="editModal" class="modal">
+            <div class="modal-content">
+                <h3>Edit Penny</h3>
+                
+                <div class="form-group">
+                    <label>Current Image:</label>
+                    <div class="preview">
+                        <img id="currentImage" src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPk9yaWdpbmFsIEltYWdlPC90ZXh0Pjwvc3ZnPg==" alt="Current Image" class="penny-image">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Change Image:</label>
+                    <div class="upload-area" id="uploadArea">
+                        <p>Click here or drag & drop to upload a new image</p>
+                        <input type="file" id="imageInput" accept="image/*" style="display: none;">
+                    </div>
+                    <div class="preview" id="newImagePreview" style="display: none;">
+                        <img id="newImage" src="" alt="New Image" class="penny-image">
+                        <br>
+                        <button class="btn btn-secondary" onclick="cancelImageChange()">Cancel</button>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="pennyName">Name:</label>
+                    <input type="text" id="pennyName" value="Test Penny">
+                </div>
+                
+                <div class="form-group">
+                    <label for="pennyLocation">Location:</label>
+                    <input type="text" id="pennyLocation" value="Test Location">
+                </div>
+                
+                <div style="text-align: right; margin-top: 20px;">
+                    <button class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
+                    <button class="btn btn-primary" onclick="saveChanges()">Save Changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let newImageData = null;
+        
+        function openEditModal() {
+            console.log('Opening edit modal');
+            document.getElementById('editModal').style.display = 'block';
+        }
+        
+        function closeEditModal() {
+            console.log('Closing edit modal');
+            document.getElementById('editModal').style.display = 'none';
+            resetImageUpload();
+        }
+        
+        function resetImageUpload() {
+            newImageData = null;
+            document.getElementById('uploadArea').style.display = 'block';
+            document.getElementById('newImagePreview').style.display = 'none';
+            document.getElementById('imageInput').value = '';
+        }
+        
+        function cancelImageChange() {
+            resetImageUpload();
+        }
+        
+        function saveChanges() {
+            console.log('Saving changes...');
+            
+            // Update the main penny image if a new image was selected
+            if (newImageData) {
+                console.log('Updating penny image with new data');
+                document.getElementById('pennyImage').src = newImageData;
+            }
+            
+            // Update other fields
+            const name = document.getElementById('pennyName').value;
+            const location = document.getElementById('pennyLocation').value;
+            
+            console.log('Changes saved successfully');
+            closeEditModal();
+        }
+        
+        // Set up image upload
+        document.addEventListener('DOMContentLoaded', function() {
+            const uploadArea = document.getElementById('uploadArea');
+            const imageInput = document.getElementById('imageInput');
+            
+            // Click to upload
+            uploadArea.addEventListener('click', () => {
+                imageInput.click();
+            });
+            
+            // File input change
+            imageInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    handleImageUpload(file);
+                }
+            });
+            
+            // Drag and drop
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+            
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.classList.remove('dragover');
+            });
+            
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    handleImageUpload(files[0]);
+                }
+            });
+        });
+        
+        function handleImageUpload(file) {
+            if (!file.type.startsWith('image/')) {
+                alert('Please select an image file');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                newImageData = e.target.result;
+                
+                // Show preview
+                document.getElementById('newImage').src = newImageData;
+                document.getElementById('uploadArea').style.display = 'none';
+                document.getElementById('newImagePreview').style.display = 'block';
+                
+                console.log('New image loaded and preview shown');
+            };
+            reader.readAsDataURL(file);
+        }
+    </script>
+</body>
+</html>

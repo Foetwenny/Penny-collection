@@ -51,6 +51,9 @@ let isDarkMode = localStorage.getItem('darkMode') === 'true';
 let currentAlbumImageData = null;
 let currentEditAlbumImageData = null;
 
+// Edit penny image upload state
+let currentEditPennyImageData = null;
+
 // Audio system
 let audioSystem = {
     enabled: localStorage.getItem('soundEnabled') !== 'false', // Default to enabled now that we have real sound files
@@ -94,6 +97,7 @@ document.addEventListener('DOMContentLoaded', function() {
     updateCollectionNameDisplay();
     initializeAlbumImageUpload();
     initializeEditAlbumImageUpload();
+    initializeEditPennyImageUpload();
     initializeAudioSystem();
     updateCollectionSummary();
     
@@ -115,6 +119,31 @@ document.addEventListener('DOMContentLoaded', function() {
             if (event.target === menuToggle || menuToggle.contains(event.target)) {
                 return;
             }
+            
+            // Don't close if clicking on any modal
+            const editModal = document.getElementById('editModal');
+            const addPennyModal = document.getElementById('addPennyModal');
+            const createAlbumModal = document.getElementById('createAlbumModal');
+            const editAlbumModal = document.getElementById('editAlbumModal');
+            const albumViewModal = document.getElementById('albumViewModal');
+            const pennyViewModal = document.getElementById('pennyViewModal');
+            const shareModal = document.getElementById('shareModal');
+            const aboutModal = document.getElementById('aboutModal');
+            const versionInfoModal = document.getElementById('versionInfoModal');
+            const displayPreferencesModal = document.getElementById('displayPreferencesModal');
+            const userGuideModal = document.getElementById('userGuideModal');
+            
+            if (editModal && editModal.contains(event.target)) return;
+            if (addPennyModal && addPennyModal.contains(event.target)) return;
+            if (createAlbumModal && createAlbumModal.contains(event.target)) return;
+            if (editAlbumModal && editAlbumModal.contains(event.target)) return;
+            if (albumViewModal && albumViewModal.contains(event.target)) return;
+            if (pennyViewModal && pennyViewModal.contains(event.target)) return;
+            if (shareModal && shareModal.contains(event.target)) return;
+            if (aboutModal && aboutModal.contains(event.target)) return;
+            if (versionInfoModal && versionInfoModal.contains(event.target)) return;
+            if (displayPreferencesModal && displayPreferencesModal.contains(event.target)) return;
+            if (userGuideModal && userGuideModal.contains(event.target)) return;
             
             const menuContainer = menuToggle.closest('.menu-dropdown');
             if (menuContainer && !menuContainer.contains(event.target)) {
@@ -1172,9 +1201,68 @@ function openEditModal() {
 
 function closeModal() {
     editModal.style.display = 'none';
+    
+    // Reset edit penny image upload state
+    currentEditPennyImageData = null;
+    resetEditPennyImageUpload();
+    
+    // Clear editing state
+    window.currentEditingPenny = null;
 }
 
 function saveEdit() {
+    console.log('saveEdit called');
+    console.log('currentEditingPenny:', window.currentEditingPenny);
+    console.log('currentAlbum:', currentAlbum);
+    console.log('currentEditPennyImageData:', currentEditPennyImageData ? 'exists' : 'null');
+    
+    // Check if we're editing a penny in an album
+    if (window.currentEditingPenny && currentAlbum) {
+        const penny = window.currentEditingPenny;
+        console.log('Updating penny:', penny);
+        
+        // Update penny data
+        penny.name = document.getElementById('editName').value;
+        penny.location = document.getElementById('editLocation').value;
+        penny.description = document.getElementById('editDescription').value;
+        penny.dateCollected = document.getElementById('editDate').value;
+        penny.notes = document.getElementById('editNotes').value;
+        
+        // Update image if a new one was uploaded
+        if (currentEditPennyImageData) {
+            console.log('Updating penny image data');
+            penny.imageData = currentEditPennyImageData;
+            // Add a timestamp to force browser to reload the image
+            penny.imageUpdated = Date.now();
+            console.log('Penny image updated with timestamp:', penny.imageUpdated);
+        }
+        
+        // Update album timestamp
+        currentAlbum.updatedAt = new Date().toISOString();
+        
+        // Save and update
+        saveAlbumsToStorage();
+        renderAlbums();
+        
+        // Small delay to ensure DOM updates properly
+        setTimeout(() => {
+            console.log('Re-rendering album pennies');
+            renderAlbumPennies();
+        }, 100);
+        
+        // Play success sound
+        playSound('successChime');
+        
+        // Clear editing state
+        window.currentEditingPenny = null;
+        currentEditPennyImageData = null;
+        
+        closeModal();
+        showNotification('Penny updated successfully!', 'success');
+        return;
+    }
+    
+    // Legacy code for old collection system (keeping for compatibility)
     const pennyId = editModal.dataset.pennyId;
     
     if (pennyId) {
@@ -1186,6 +1274,11 @@ function saveEdit() {
             penny.description = document.getElementById('editDescription').value;
             penny.dateCollected = document.getElementById('editDate').value;
             penny.notes = document.getElementById('editNotes').value;
+            
+            // Update image if a new one was uploaded
+            if (currentEditPennyImageData) {
+                penny.image = currentEditPennyImageData;
+            }
             
             saveCollectionToStorage();
             renderCollection();
@@ -1271,11 +1364,7 @@ document.addEventListener('keydown', function(event) {
     }
 });
 
-// Modal functions
-function closeModal() {
-    editModal.style.display = 'none';
-    window.currentEditingPenny = null;
-}
+// Modal functions (closeModal is defined earlier)
 
 // Album Management Functions
 function openCreateAlbumModal() {
@@ -1510,6 +1599,9 @@ function renderAlbumPenniesWithSearchHighlights() {
     const penniesGrid = document.getElementById('penniesGrid');
     const searchTerm = currentAlbum.currentSearchContext;
     
+    // Clear the grid first to force re-render
+    penniesGrid.innerHTML = '';
+    
     // Separate matching and non-matching pennies
     const matchingPennies = [];
     const nonMatchingPennies = [];
@@ -1547,9 +1639,12 @@ function renderAlbumPenniesWithSearchHighlights() {
         // Add search highlight class if this penny matches
         const searchClass = isMatch ? ' search-match' : '';
         
+        // Don't add cache-busting to base64 data URLs
+        const imageSrc = penny.imageData.startsWith('data:') ? penny.imageData : `${penny.imageData}${penny.imageUpdated ? '?t=' + penny.imageUpdated : ''}`;
+        console.log('Rendering penny card (search):', penny.name, 'Image src:', imageSrc.substring(0, 50) + '...');
         return `
         <div class="penny-item${searchClass}" data-penny-id="${penny.id}" data-search-term="${searchTerm}">
-            <img src="${penny.imageData}" alt="${penny.name}" class="penny-image" onclick="openPennyViewFromElement(this.parentElement)">
+            <img src="${imageSrc}" alt="${penny.name}" class="penny-image" onclick="openPennyViewFromElement(this.parentElement)" onerror="console.log('Image failed to load for penny (search):', '${penny.name}')">
             <div class="penny-info">
                 <h4>${highlightedName}</h4>
                 <p class="location">${highlightedLocation}</p>
@@ -1570,9 +1665,16 @@ function renderAlbumPenniesWithSearchHighlights() {
 function renderAlbumPenniesNormal() {
     const penniesGrid = document.getElementById('penniesGrid');
     
-    penniesGrid.innerHTML = currentAlbum.pennies.map(penny => `
+    // Clear the grid first to force re-render
+    penniesGrid.innerHTML = '';
+    
+    penniesGrid.innerHTML = currentAlbum.pennies.map(penny => {
+        // Don't add cache-busting to base64 data URLs
+        const imageSrc = penny.imageData.startsWith('data:') ? penny.imageData : `${penny.imageData}${penny.imageUpdated ? '?t=' + penny.imageUpdated : ''}`;
+        console.log('Rendering penny card:', penny.name, 'Image src:', imageSrc.substring(0, 50) + '...');
+        return `
         <div class="penny-item" data-penny-id="${penny.id}" data-search-term="${currentAlbum.currentSearchContext || ''}">
-            <img src="${penny.imageData}" alt="${penny.name}" class="penny-image" onclick="openPennyViewFromElement(this.parentElement)">
+            <img src="${imageSrc}" alt="${penny.name}" class="penny-image" onclick="openPennyViewFromElement(this.parentElement)" onerror="console.log('Image failed to load for penny:', '${penny.name}')">
             <div class="penny-info">
                 <h4>${penny.name}</h4>
                 <p class="location">${penny.location}</p>
@@ -1586,8 +1688,8 @@ function renderAlbumPenniesNormal() {
                     <i class="fas fa-trash"></i>
                 </button>
             </div>
-        </div>
-    `).join('');
+        </div>`;
+    }).join('');
 }
 
 function editCurrentAlbum() {
@@ -1893,8 +1995,14 @@ function saveToAlbum() {
 }
 
 function editPennyInAlbum(pennyId) {
+    console.log('editPennyInAlbum called with ID:', pennyId);
     const penny = currentAlbum.pennies.find(p => p.id === pennyId);
-    if (!penny) return;
+    if (!penny) {
+        console.log('Penny not found with ID:', pennyId);
+        return;
+    }
+    
+    console.log('Found penny:', penny);
     
     // Populate edit form
     document.getElementById('editName').value = penny.name;
@@ -1905,10 +2013,23 @@ function editPennyInAlbum(pennyId) {
     document.getElementById('editDate').value = formatDateForInput(penny.dateCollected);
     document.getElementById('editNotes').value = penny.notes || '';
     
+    // Show current image
+    const currentImagePreview = document.getElementById('editPennyCurrentImagePreview');
+    if (currentImagePreview && penny.imageData) {
+        currentImagePreview.src = penny.imageData;
+        console.log('Set current image preview');
+    }
+    
+    // Reset image upload state
+    currentEditPennyImageData = null;
+    resetEditPennyImageUpload();
+    
     // Store current penny for editing
     window.currentEditingPenny = penny;
     
+    console.log('About to show edit modal');
     editModal.style.display = 'block';
+    console.log('Edit modal display set to block');
 }
 
 function deletePennyFromAlbum(pennyId) {
@@ -1931,28 +2052,6 @@ function deletePennyFromAlbum(pennyId) {
     }
 }
 
-function saveEdit() {
-    if (!window.currentEditingPenny || !currentAlbum) return;
-    
-    const penny = window.currentEditingPenny;
-    penny.name = document.getElementById('editName').value;
-    penny.location = document.getElementById('editLocation').value;
-    penny.description = document.getElementById('editDescription').value;
-    penny.dateCollected = document.getElementById('editDate').value;
-    penny.notes = document.getElementById('editNotes').value;
-    penny.updatedAt = new Date().toISOString();
-    
-    currentAlbum.updatedAt = new Date().toISOString();
-    saveAlbumsToStorage();
-    renderAlbumPennies();
-    
-    // Play success sound
-    playSound('successChime');
-    
-    closeModal();
-    
-    showNotification('Penny updated successfully!', 'success');
-}
 
 function saveAlbumsToStorage() {
     try {
@@ -2159,7 +2258,29 @@ function importAlbums() {
 
 // Close modals when clicking outside
 window.addEventListener('click', function(event) {
-    // Note: editModal is intentionally excluded to prevent accidental closure
+    // Don't close if clicking inside any modal
+    if (editModal && editModal.contains(event.target)) return;
+    if (createAlbumModal && createAlbumModal.contains(event.target)) return;
+    if (albumViewModal && albumViewModal.contains(event.target)) return;
+    if (editAlbumModal && editAlbumModal.contains(event.target)) return;
+    if (addPennyModal && addPennyModal.contains(event.target)) return;
+    if (pennyViewModal && pennyViewModal.contains(event.target)) return;
+    const shareModal = document.getElementById('shareModal');
+    if (shareModal && shareModal.contains(event.target)) return;
+    const aboutModal = document.getElementById('aboutModal');
+    if (aboutModal && aboutModal.contains(event.target)) return;
+    const versionInfoModal = document.getElementById('versionInfoModal');
+    if (versionInfoModal && versionInfoModal.contains(event.target)) return;
+    const displayPreferencesModal = document.getElementById('displayPreferencesModal');
+    if (displayPreferencesModal && displayPreferencesModal.contains(event.target)) return;
+    const userGuideModal = document.getElementById('userGuideModal');
+    if (userGuideModal && userGuideModal.contains(event.target)) return;
+    const sortOptionsModal = document.getElementById('sortOptionsModal');
+    if (sortOptionsModal && sortOptionsModal.contains(event.target)) return;
+    const collectionSettingsModal = document.getElementById('collectionSettingsModal');
+    if (collectionSettingsModal && collectionSettingsModal.contains(event.target)) return;
+    
+    // Close modals when clicking on the modal backdrop (the modal itself, not its content)
     if (event.target === createAlbumModal) {
         closeCreateAlbumModal();
     }
@@ -2863,6 +2984,92 @@ function resetEditAlbumImageUpload() {
     if (uploadArea) uploadArea.classList.remove('dragover');
     if (uploadContent) uploadContent.style.display = 'block';
     if (uploadPreview) uploadPreview.style.display = 'none';
+    if (fileInput) fileInput.value = '';
+}
+
+// Edit Penny Image Upload Functions
+function initializeEditPennyImageUpload() {
+    const uploadArea = document.getElementById('editPennyUploadArea');
+    const fileInput = document.getElementById('editPennyImageInput');
+    const chooseBtn = document.getElementById('editPennyChooseImageBtn');
+    
+    if (!uploadArea || !fileInput || !chooseBtn) return;
+    
+    // Click to browse
+    chooseBtn.addEventListener('click', () => {
+        fileInput.click();
+    });
+    
+    uploadArea.addEventListener('click', () => {
+        fileInput.click();
+    });
+    
+    // File input change
+    fileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            handleEditPennyImageUpload(file);
+        }
+    });
+    
+    // Drag and drop
+    uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadArea.classList.add('dragover');
+    });
+    
+    uploadArea.addEventListener('dragleave', () => {
+        uploadArea.classList.remove('dragover');
+    });
+    
+    uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            handleEditPennyImageUpload(files[0]);
+        }
+    });
+}
+
+function handleEditPennyImageUpload(file) {
+    if (!file.type.startsWith('image/')) {
+        showNotification('Please select an image file', 'error');
+        return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const base64 = e.target.result;
+        
+        // Compress the image
+        compressImage(base64, 800, 600, 0.8).then(compressedData => {
+            currentEditPennyImageData = compressedData;
+            
+            // Show preview
+            const preview = document.getElementById('editPennyUploadPreview');
+            const previewImg = document.getElementById('editPennyPreviewImage');
+            const uploadArea = document.getElementById('editPennyUploadArea');
+            
+            if (preview && previewImg && uploadArea) {
+                previewImg.src = compressedData;
+                preview.style.display = 'block';
+                uploadArea.style.display = 'none';
+            }
+        });
+    };
+    reader.readAsDataURL(file);
+}
+
+function resetEditPennyImageUpload() {
+    currentEditPennyImageData = null;
+    const preview = document.getElementById('editPennyUploadPreview');
+    const uploadArea = document.getElementById('editPennyUploadArea');
+    const fileInput = document.getElementById('editPennyImageInput');
+    
+    if (preview) preview.style.display = 'none';
+    if (uploadArea) uploadArea.style.display = 'block';
     if (fileInput) fileInput.value = '';
 }
 
