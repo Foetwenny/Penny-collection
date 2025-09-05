@@ -64,11 +64,14 @@
                         <div id="menuDropdown" class="menu-dropdown-content">
                             <div class="menu-section">
                                 <h4>Collection Management</h4>
-                                <button onclick="exportAlbums()" class="menu-item">
-                                    <i class="fas fa-download"></i> Export Backup
+                                <button onclick="saveCollectionAs()" class="menu-item">
+                                    <i class="fas fa-download"></i> Save Collection As...
                                 </button>
-                                <button onclick="importAlbums()" class="menu-item">
-                                    <i class="fas fa-upload"></i> Import Backup
+                                <button onclick="loadCollection()" class="menu-item">
+                                    <i class="fas fa-upload"></i> Load Collection
+                                </button>
+                                <button onclick="createNewCollection()" class="menu-item">
+                                    <i class="fas fa-plus"></i> New Collection
                                 </button>
                             </div>
 
@@ -137,6 +140,10 @@
                                 <i class="fas fa-coins"></i>
                                 <span class="stat-number" id="pennyCount">0</span>
                                 <span class="stat-label">Pennies</span>
+                            </div>
+                            <div class="last-backup-indicator" id="lastBackupIndicator">
+                                <i class="fas fa-save"></i>
+                                <span id="lastBackupText">Never saved</span>
                             </div>
                         </div>
                         
@@ -1031,6 +1038,9 @@
                                     <li><i class="fas fa-palette"></i> Display preferences with dark mode and sound controls</li>
                                     <li><i class="fas fa-shield-alt"></i> Local data storage for privacy and offline access</li>
                                     <li><i class="fas fa-download"></i> Export/import for backup and sharing</li>
+                                    <li><i class="fas fa-share-alt"></i> Share individual albums as JSON files</li>
+                                    <li><i class="fas fa-save"></i> Enhanced collection management with automatic backups</li>
+                                    <li><i class="fas fa-clock"></i> Smart modification tracking to encourage regular backups</li>
                                     <li><i class="fas fa-mobile-alt"></i> Responsive design for all devices</li>
                                 </ul>
                             </div>
@@ -1044,7 +1054,7 @@
 
                             <div class="about-footer">
                                 <p><i class="fas fa-heart"></i> Made with love for penny collectors everywhere</p>
-                                <p class="about-version">Version 2.1 - Enhanced with Audio System & UI Improvements</p>
+                                <p class="about-version">Version 2.2 - Enhanced Collection Management & Album Sharing</p>
                             </div>
                         </div>
                     </div>
@@ -1068,14 +1078,51 @@
                             <div class="version-current">
                                 <h4><i class="fas fa-tag"></i> Current Version</h4>
                                 <div class="version-badge">
-                                    <span class="version-number">2.1.0</span>
-                                    <span class="version-name">Audio Enhanced</span>
+                                    <span class="version-number">2.2.0</span>
+                                    <span class="version-name">Collection Management Enhanced</span>
                                 </div>
                                 <p class="version-date">Latest Release</p>
                             </div>
 
                             <div class="version-changelog">
-                                <h4><i class="fas fa-list-ul"></i> What's New in 2.1</h4>
+                                <h4><i class="fas fa-list-ul"></i> What's New in 2.2</h4>
+                                <div class="changelog-item">
+                                    <div class="changelog-header">
+                                        <i class="fas fa-share-alt"></i>
+                                        <strong>Album Sharing</strong>
+                                        <span class="changelog-badge new">NEW</span>
+                                    </div>
+                                    <p>Share individual albums as JSON files with the new share button on each album card</p>
+                                </div>
+
+                                <div class="changelog-item">
+                                    <div class="changelog-header">
+                                        <i class="fas fa-save"></i>
+                                        <strong>Enhanced Collection Management</strong>
+                                        <span class="changelog-badge improved">IMPROVED</span>
+                                    </div>
+                                    <p>Improved "Save Collection As..." and "Load Collection" with better naming, validation, and automatic backups</p>
+                                </div>
+
+                                <div class="changelog-item">
+                                    <div class="changelog-header">
+                                        <i class="fas fa-clock"></i>
+                                        <strong>Smart Modification Tracking</strong>
+                                        <span class="changelog-badge new">NEW</span>
+                                    </div>
+                                    <p>Last modified indicator tracks your activity and encourages regular backups</p>
+                                </div>
+
+                                <div class="changelog-item">
+                                    <div class="changelog-header">
+                                        <i class="fas fa-palette"></i>
+                                        <strong>Earth-Tone Design</strong>
+                                        <span class="changelog-badge improved">IMPROVED</span>
+                                    </div>
+                                    <p>Refined color scheme with earth-tone action buttons that complement the overall design</p>
+                                </div>
+
+                                <h4><i class="fas fa-list-ul"></i> Previous Updates (2.1)</h4>
                                 <div class="changelog-item">
                                     <div class="changelog-header">
                                         <i class="fas fa-volume-up"></i>

@@ -95,6 +95,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeDarkMode();
     initializeSortEventListeners();
     updateCollectionNameDisplay();
+    updateLastBackupDisplay();
     initializeAlbumImageUpload();
     initializeEditAlbumImageUpload();
     initializeEditPennyImageUpload();
@@ -125,7 +126,6 @@ document.addEventListener('DOMContentLoaded', function() {
             const addPennyModal = document.getElementById('addPennyModal');
             const createAlbumModal = document.getElementById('createAlbumModal');
             const editAlbumModal = document.getElementById('editAlbumModal');
-            const albumViewModal = document.getElementById('albumViewModal');
             const pennyViewModal = document.getElementById('pennyViewModal');
             const shareModal = document.getElementById('shareModal');
             const aboutModal = document.getElementById('aboutModal');
@@ -376,7 +376,13 @@ function renderAlbums() {
     
     albumsGrid.innerHTML = albums.map(album => {
         const hasCover = album.imageUrl && album.imageUrl.length > 0;
-        const coverStyle = hasCover ? ` style="--album-cover-url: url('${album.imageUrl.replace(/"/g, '\\"')}')"` : '';
+        // Add cache-busting for non-base64 URLs
+        const imageUrlWithCacheBust = hasCover ? 
+            (album.imageUrl.startsWith('data:') ? 
+                album.imageUrl : 
+                `${album.imageUrl}${album.imageUpdated ? '?t=' + album.imageUpdated : ''}`) : 
+            '';
+        const coverStyle = hasCover ? ` style="--album-cover-url: url('${imageUrlWithCacheBust.replace(/"/g, '\\"')}')"` : '';
         return `
         <div class="album-card${hasCover ? ' has-cover' : ''}" data-album-id="${album.id}"${coverStyle} onclick="openAlbumView('${album.id}')">
             ${hasCover ? '<div class=\"album-cover\"></div>' : ''}
@@ -395,6 +401,11 @@ function renderAlbums() {
                     <i class="fas fa-map-marker-alt"></i> 
                     ${(album.locationUrl && album.locationUrl.trim()) ? `<a href="${album.locationUrl}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();" title="Open location in new window">${album.location}</a>` : album.location}
                 </div>` : ''}
+                <div class="album-actions">
+                    <button class="album-action-btn share-btn" onclick="event.stopPropagation(); shareAlbum('${album.id}')" title="Share Album">
+                        <i class="fas fa-share"></i>
+                    </button>
+                </div>
             </div>
         </div>`;
     }).join('');
@@ -406,6 +417,7 @@ function renderAlbums() {
 function updateCollectionSummary() {
     const albumCountElement = document.getElementById('albumCount');
     const pennyCountElement = document.getElementById('pennyCount');
+    updateLastBackupDisplay();
     
     if (albumCountElement && pennyCountElement) {
         // Count total albums
@@ -426,6 +438,58 @@ function updateCollectionSummary() {
             collectionSummary.style.display = totalAlbums > 0 ? 'block' : 'none';
         }
     }
+}
+
+// Update last backup display
+function updateLastBackupDisplay() {
+    const lastBackupIndicator = document.getElementById('lastBackupIndicator');
+    const lastBackupText = document.getElementById('lastBackupText');
+    
+    if (!lastBackupIndicator || !lastBackupText) return;
+    
+    const lastBackupTime = localStorage.getItem('lastBackupTime');
+    
+    if (!lastBackupTime) {
+        lastBackupText.textContent = 'Never modified';
+        lastBackupIndicator.className = 'last-backup-indicator';
+        return;
+    }
+    
+    const backupDate = new Date(lastBackupTime);
+    const now = new Date();
+    const diffMs = now - backupDate;
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffHours / 24);
+    
+    let timeText;
+    let indicatorClass = 'last-backup-indicator';
+    
+    if (diffMs < 60000) { // Less than 1 minute
+        timeText = 'Just now';
+        indicatorClass += ' recent';
+    } else if (diffMs < 3600000) { // Less than 1 hour
+        const diffMinutes = Math.floor(diffMs / (1000 * 60));
+        timeText = `${diffMinutes}m ago`;
+        indicatorClass += ' recent';
+    } else if (diffHours < 24) { // Less than 1 day
+        timeText = `${diffHours}h ago`;
+        indicatorClass += diffHours > 6 ? ' old' : ' recent';
+    } else if (diffDays < 7) { // Less than 1 week
+        timeText = `${diffDays}d ago`;
+        indicatorClass += ' old';
+    } else {
+        timeText = backupDate.toLocaleDateString();
+        indicatorClass += ' old';
+    }
+    
+    lastBackupText.textContent = `Last modified: ${timeText}`;
+    lastBackupIndicator.className = indicatorClass;
+}
+
+// Track modification time
+function trackModificationTime() {
+    localStorage.setItem('lastBackupTime', new Date().toISOString());
+    updateLastBackupDisplay();
 }
 
 function renderAlbumsWithSearchHighlights(filteredAlbums) {
@@ -451,7 +515,13 @@ function renderAlbumsWithSearchHighlights(filteredAlbums) {
     
     albumsGrid.innerHTML = filteredAlbums.map(album => {
         const hasCover = album.imageUrl && album.imageUrl.length > 0;
-        const coverStyle = hasCover ? ` style="--album-cover-url: url('${album.imageUrl.replace(/"/g, '\\"')}')"` : '';
+        // Add cache-busting for non-base64 URLs
+        const imageUrlWithCacheBust = hasCover ? 
+            (album.imageUrl.startsWith('data:') ? 
+                album.imageUrl : 
+                `${album.imageUrl}${album.imageUpdated ? '?t=' + album.imageUpdated : ''}`) : 
+            '';
+        const coverStyle = hasCover ? ` style="--album-cover-url: url('${imageUrlWithCacheBust.replace(/"/g, '\\"')}')"` : '';
         const searchTerm = album.searchTerm || '';
         const matches = album.searchMatches || {};
         
@@ -495,6 +565,11 @@ function renderAlbumsWithSearchHighlights(filteredAlbums) {
                     <i class="fas fa-map-marker-alt"></i> 
                     ${(album.locationUrl && album.locationUrl.trim()) ? `<a href="${album.locationUrl}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();" title="Open location in new window">${highlightedLocation}</a>` : highlightedLocation}
                 </div>` : ''}
+                <div class="album-actions">
+                    <button class="album-action-btn share-btn" onclick="event.stopPropagation(); shareAlbum('${album.id}')" title="Share Album">
+                        <i class="fas fa-share"></i>
+                    </button>
+                </div>
             </div>
         </div>`;
     }).join('');
@@ -1479,7 +1554,13 @@ function openAlbumView(albumId) {
     
     // Update album info
     const hasCover = currentAlbum.imageUrl && currentAlbum.imageUrl.length > 0;
-    const coverStyle = hasCover ? ` style="--album-cover-url: url('${currentAlbum.imageUrl.replace(/"/g, '\\"')}')"` : '';
+    // Add cache-busting for non-base64 URLs
+    const imageUrlWithCacheBust = hasCover ? 
+        (currentAlbum.imageUrl.startsWith('data:') ? 
+            currentAlbum.imageUrl : 
+            `${currentAlbum.imageUrl}${currentAlbum.imageUpdated ? '?t=' + currentAlbum.imageUpdated : '?t=' + Date.now()}`) : 
+        '';
+    const coverStyle = hasCover ? ` style="--album-cover-url: url('${imageUrlWithCacheBust.replace(/"/g, '\\"')}')"` : '';
     
     document.getElementById('albumInfo').innerHTML = `
         <div class="album-info-hero${hasCover ? ' has-cover' : ''}"${coverStyle}>
@@ -1548,6 +1629,9 @@ function closeAlbumView() {
         const newUrl = window.location.pathname;
         window.history.replaceState({}, document.title, newUrl);
     }
+    
+    // Track modification time when returning to main view
+    trackModificationTime();
 }
 
 function deleteCurrentAlbum() {
@@ -1721,6 +1805,10 @@ function editAlbum(albumId) {
     
     // Clear form first
     document.getElementById('editAlbumForm').reset();
+    
+    // Reset edit album image upload state
+    currentEditAlbumImageData = null;
+    resetEditAlbumImageUpload();
     
     // Store current album and populate form
     currentAlbum = album;
@@ -1909,10 +1997,22 @@ function saveAlbumEdit() {
     // Use local image if available, otherwise use URL
     const finalImageUrl = currentEditAlbumImageData || imageUrl;
     
-    Object.assign(album, { name, description, categories, tripDate, location, locationUrl, imageUrl: finalImageUrl });
+    // Add imageUpdated timestamp if we're using a new image
+    const updates = { name, description, categories, tripDate, location, locationUrl, imageUrl: finalImageUrl };
+    if (currentEditAlbumImageData) {
+        updates.imageUpdated = Date.now();
+    }
+    
+    Object.assign(album, updates);
     album.updatedAt = new Date().toISOString();
     saveAlbumsToStorage();
     renderAlbums();
+    
+    // If the album view modal is currently open for this album, refresh it
+    if (albumViewModal && albumViewModal.style.display === 'block' && currentAlbum && currentAlbum.id === album.id) {
+        openAlbumView(album.id);
+    }
+    
     closeEditAlbumModal();
     showNotification('Album updated successfully!', 'success');
 }
@@ -1986,6 +2086,9 @@ function saveToAlbum() {
     
     // Play success sound
     playSound('successChime');
+    
+    // Track modification time
+    trackModificationTime();
     
     console.log('Closing modal...');
     closeAddPennyModal();
@@ -2171,8 +2274,8 @@ function showEmptyAlbumsStateIfNeeded() {
     }
 }
 
-// Export/Backup function to prevent data loss
-function exportAlbums() {
+// Save Collection As function to prevent data loss
+function saveCollectionAs() {
     // Prompt user for custom filename
     const defaultName = `penny-collection-backup-${new Date().toISOString().split('T')[0]}`;
     const customName = prompt('Enter a name for your backup file:', defaultName);
@@ -2206,11 +2309,12 @@ function exportAlbums() {
     link.click();
     
     URL.revokeObjectURL(url);
-    showNotification(`Backup exported as "${finalName}.json"!`, 'success');
+    trackModificationTime();
+    showNotification(`Collection saved as "${finalName}.json"!`, 'success');
 }
 
-// Import function to restore data
-function importAlbums() {
+// Load Collection function to restore data with fail-safes
+function loadCollection() {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.json';
@@ -2223,11 +2327,40 @@ function importAlbums() {
                 try {
                     const importedData = JSON.parse(e.target.result);
                     
+                    // Validate the imported data structure
+                    if (!validateImportData(importedData)) {
+                        showNotification('Invalid backup file format. Please check the file and try again.', 'error');
+                        return;
+                    }
+                    
+                    // Show warning dialog before proceeding
+                    const currentAlbumCount = albums.length;
+                    const importedAlbumCount = Array.isArray(importedData) ? importedData.length : importedData.albums.length;
+                    
+                    const warningMessage = `⚠️ IMPORT WARNING ⚠️
+
+This will REPLACE all your current data:
+• Current albums: ${currentAlbumCount}
+• Albums to import: ${importedAlbumCount}
+
+A backup of your current data will be created automatically.
+
+Do you want to continue?`;
+                    
+                    if (!confirm(warningMessage)) {
+                        showNotification('Load collection cancelled.', 'info');
+                        return;
+                    }
+                    
+                    // Create automatic backup before importing
+                    createAutomaticBackup();
+                    trackModificationTime();
+                    
                     // Handle both old format (just albums array) and new format (with collection name)
                     if (Array.isArray(importedData)) {
                         // Old format - just albums
                         albums = importedData;
-                        showNotification('Albums imported successfully!', 'success');
+                        showNotification(`Collection loaded successfully! ${importedAlbumCount} albums loaded.`, 'success');
                     } else if (importedData.albums && Array.isArray(importedData.albums)) {
                         // New format - with collection name and metadata
                         albums = importedData.albums;
@@ -2235,18 +2368,18 @@ function importAlbums() {
                         // Import collection name if it exists
                         if (importedData.collectionName) {
                             setCollectionName(importedData.collectionName);
-                            showNotification(`Collection "${importedData.collectionName}" imported successfully!`, 'success');
+                            showNotification(`Collection "${importedData.collectionName}" loaded successfully! ${importedAlbumCount} albums loaded.`, 'success');
                         } else {
-                            showNotification('Albums imported successfully!', 'success');
+                            showNotification(`Collection loaded successfully! ${importedAlbumCount} albums loaded.`, 'success');
                         }
-                    } else {
-                        throw new Error('Invalid format');
                     }
                     
                     saveAlbumsToStorage();
                     renderAlbums();
+                    
                 } catch (error) {
-                    showNotification('Invalid backup file. Please try again.', 'error');
+                    console.error('Load collection error:', error);
+                    showNotification('Failed to load collection. The file may be corrupted or in an invalid format.', 'error');
                 }
             };
             reader.readAsText(file);
@@ -2254,6 +2387,146 @@ function importAlbums() {
     };
     
     input.click();
+}
+
+// Share single album function
+function shareAlbum(albumId) {
+    const album = albums.find(a => a.id === albumId);
+    if (!album) {
+        showNotification('Album not found.', 'error');
+        return;
+    }
+    
+    // Create album data for sharing
+    const albumData = {
+        albumName: album.name,
+        description: album.description,
+        tripDate: album.tripDate,
+        location: album.location,
+        locationUrl: album.locationUrl,
+        imageUrl: album.imageUrl,
+        pennies: album.pennies,
+        createdDate: album.createdAt,
+        sharedDate: new Date().toISOString(),
+        version: "1.0",
+        type: "single_album"
+    };
+    
+    // Create and download the file
+    const albumStr = JSON.stringify(albumData, null, 2);
+    const albumBlob = new Blob([albumStr], {type: 'application/json'});
+    const albumUrl = URL.createObjectURL(albumBlob);
+    
+    const link = document.createElement('a');
+    link.href = albumUrl;
+    link.download = `${album.name}.json`;
+    link.style.display = 'none';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    URL.revokeObjectURL(albumUrl);
+    showNotification(`Album "${album.name}" shared successfully!`, 'success');
+}
+
+// Create new collection function
+function createNewCollection() {
+    const warningMessage = `⚠️ NEW COLLECTION WARNING ⚠️
+
+This will clear your current collection:
+• Current albums: ${albums.length}
+• Collection: "${collectionName}"
+
+Your current data will be lost unless you save it first.
+
+Do you want to continue?`;
+    
+    if (!confirm(warningMessage)) {
+        showNotification('New collection cancelled.', 'info');
+        return;
+    }
+    
+    // Clear current data
+    albums = [];
+    collectionName = 'My Collection';
+    
+    // Update collection name in UI
+    setCollectionName(collectionName);
+    
+    // Save to storage and refresh
+    saveAlbumsToStorage();
+    renderAlbums();
+    updateCollectionSummary();
+    showEmptyAlbumsStateIfNeeded();
+    
+    showNotification('New collection created!', 'success');
+}
+
+// Validate imported data structure
+function validateImportData(data) {
+    try {
+        // Check if it's a valid array (old format)
+        if (Array.isArray(data)) {
+            // Validate that it contains album objects
+            return data.every(album => 
+                album && 
+                typeof album === 'object' && 
+                album.id && 
+                album.name &&
+                Array.isArray(album.pennies)
+            );
+        }
+        
+        // Check if it's a valid object with albums property (new format)
+        if (data && typeof data === 'object' && Array.isArray(data.albums)) {
+            // Validate that albums contains valid album objects
+            return data.albums.every(album => 
+                album && 
+                typeof album === 'object' && 
+                album.id && 
+                album.name &&
+                Array.isArray(album.pennies)
+            );
+        }
+        
+        return false;
+    } catch (error) {
+        return false;
+    }
+}
+
+// Create automatic backup before import
+function createAutomaticBackup() {
+    try {
+        const backupData = {
+            collectionName: collectionName,
+            albums: albums,
+            backupDate: new Date().toISOString(),
+            version: "1.0",
+            backupType: "automatic_pre_import"
+        };
+        
+        const backupStr = JSON.stringify(backupData, null, 2);
+        const backupBlob = new Blob([backupStr], {type: 'application/json'});
+        const backupUrl = URL.createObjectURL(backupBlob);
+        
+        const backupLink = document.createElement('a');
+        backupLink.href = backupUrl;
+        backupLink.download = `auto-backup-before-import-${new Date().toISOString().split('T')[0]}.json`;
+        backupLink.style.display = 'none';
+        
+        document.body.appendChild(backupLink);
+        backupLink.click();
+        document.body.removeChild(backupLink);
+        
+        URL.revokeObjectURL(backupUrl);
+        
+        console.log('Automatic backup created before import');
+    } catch (error) {
+        console.error('Failed to create automatic backup:', error);
+        showNotification('Warning: Could not create automatic backup before import.', 'warning');
+    }
 }
 
 // Close modals when clicking outside
@@ -2959,6 +3232,8 @@ function processEditAlbumImageFile(file) {
     reader.onload = function(e) {
         currentEditAlbumImageData = e.target.result;
         displayEditAlbumImagePreview(e.target.result);
+        // Clear the URL field since we're using the uploaded image
+        document.getElementById('editAlbumImageUrl').value = '';
         showNotification('Image uploaded successfully!', 'success');
     };
     reader.readAsDataURL(file);
@@ -2985,6 +3260,9 @@ function resetEditAlbumImageUpload() {
     if (uploadContent) uploadContent.style.display = 'block';
     if (uploadPreview) uploadPreview.style.display = 'none';
     if (fileInput) fileInput.value = '';
+    
+    // Don't clear the URL field here - let the user keep their original URL
+    // The URL field will be used if no new image is uploaded
 }
 
 // Edit Penny Image Upload Functions
