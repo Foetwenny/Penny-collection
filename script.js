@@ -450,7 +450,7 @@ function updateLastBackupDisplay() {
     const lastBackupTime = localStorage.getItem('lastBackupTime');
     
     if (!lastBackupTime) {
-        lastBackupText.textContent = 'Never modified';
+        lastBackupText.textContent = 'Never saved';
         lastBackupIndicator.className = 'last-backup-indicator';
         return;
     }
@@ -482,12 +482,12 @@ function updateLastBackupDisplay() {
         indicatorClass += ' old';
     }
     
-    lastBackupText.textContent = `Last modified: ${timeText}`;
+    lastBackupText.textContent = `Last saved: ${timeText}`;
     lastBackupIndicator.className = indicatorClass;
 }
 
-// Track modification time
-function trackModificationTime() {
+// Track last backup time
+function trackLastBackupTime() {
     localStorage.setItem('lastBackupTime', new Date().toISOString());
     updateLastBackupDisplay();
 }
@@ -1629,9 +1629,6 @@ function closeAlbumView() {
         const newUrl = window.location.pathname;
         window.history.replaceState({}, document.title, newUrl);
     }
-    
-    // Track modification time when returning to main view
-    trackModificationTime();
 }
 
 function deleteCurrentAlbum() {
@@ -2087,9 +2084,6 @@ function saveToAlbum() {
     // Play success sound
     playSound('successChime');
     
-    // Track modification time
-    trackModificationTime();
-    
     console.log('Closing modal...');
     closeAddPennyModal();
     
@@ -2309,7 +2303,7 @@ function saveCollectionAs() {
     link.click();
     
     URL.revokeObjectURL(url);
-    trackModificationTime();
+    trackLastBackupTime();
     showNotification(`Collection saved as "${finalName}.json"!`, 'success');
 }
 
@@ -2354,7 +2348,7 @@ Do you want to continue?`;
                     
                     // Create automatic backup before importing
                     createAutomaticBackup();
-                    trackModificationTime();
+                    trackLastBackupTime();
                     
                     // Handle both old format (just albums array) and new format (with collection name)
                     if (Array.isArray(importedData)) {
