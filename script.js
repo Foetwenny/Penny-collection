@@ -768,10 +768,10 @@ function renderAlbumsWithSearchHighlights(filteredAlbums) {
         const matchIndicators = [];
         if (matches.name) matchIndicators.push('<span class="match-indicator name-match"><i class="fas fa-tag"></i> Name</span>');
         if (matches.description) matchIndicators.push('<span class="match-indicator desc-match"><i class="fas fa-align-left"></i> Description</span>');
-        if (matches.categories) matchIndicators.push('<span class="match-indicator cat-match"><i class="fas fa-folder"></i> Categories</span>');
+        if (matches.categories) matchIndicators.push('<span class="match-indicator cat-match"><i class="fas fa-folder"></i> Category</span>');
         if (matches.location) matchIndicators.push('<span class="match-indicator loc-match"><i class="fas fa-map-marker-alt"></i> Location</span>');
         if (matches.pennies && matches.pennies.length > 0) {
-                            matchIndicators.push(`<span class="match-indicator penny-match"><i class="fas fa-coins"></i> ${matches.pennies.length} Match${matches.pennies.length === 1 ? '' : 'es'}</span>`);
+                            matchIndicators.push(`<span class="match-indicator penny-match"><i class="fas fa-coins"></i> ${matches.pennies.length} ${matches.pennies.length === 1 ? 'penny' : 'pennies'}</span>`);
         }
         
         return `
@@ -780,8 +780,8 @@ function renderAlbumsWithSearchHighlights(filteredAlbums) {
             <div class="album-content">
                 <div class="album-header">
                     <h3 class="album-title">${highlightedName}</h3>
-                    ${matchIndicators.length > 0 ? `<div class="search-match-indicators">${matchIndicators.join('')}</div>` : ''}
                 </div>
+                ${matchIndicators.length > 0 ? `<div class="search-match-indicators">${matchIndicators.join('')}</div>` : ''}
                 <p class="album-description">${highlightedDescription}</p>
                 <div class="album-stats">
                     <span class="album-date">${album.tripDate ? `Trip: ${formatDateForDisplay(album.tripDate)}` : 'No trip date set'}</span>
@@ -845,8 +845,7 @@ function showAllAlbums() {
 function highlightSearchTerm(text, searchTerm) {
     if (!searchTerm || !text) return text;
     
-    // For HTML content, we need to be more careful about highlighting
-    // First, strip HTML tags for searching, then reapply them
+    // First, check if there's a match in the plain text
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = text;
     const plainText = tempDiv.textContent || tempDiv.innerText || '';
@@ -855,18 +854,47 @@ function highlightSearchTerm(text, searchTerm) {
         return text; // No match found
     }
     
-    // Create a more sophisticated highlighting that preserves HTML structure
-    const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-    const highlightedText = plainText.replace(regex, '<mark class="search-highlight">$1</mark>');
-    
-    // If the original text was plain text, return the highlighted version
+    // If the text is plain text (no HTML), do simple highlighting
     if (text === plainText) {
-        return highlightedText;
+        const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+        return plainText.replace(regex, '<mark class="search-highlight">$1</mark>');
     }
     
-    // For HTML content, we'll return the original text with a note that it contains matches
-    // This is a simplified approach - a more sophisticated version would parse and rebuild the HTML
-    return text;
+    // For HTML content, we need to highlight while preserving HTML structure
+    // Create a temporary container to work with the HTML
+    const container = document.createElement('div');
+    container.innerHTML = text;
+    
+    // Function to recursively highlight text nodes
+    function highlightTextNodes(node, searchTerm) {
+        if (node.nodeType === Node.TEXT_NODE) {
+            const text = node.textContent;
+            if (text.toLowerCase().includes(searchTerm.toLowerCase())) {
+                const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+                const highlightedHTML = text.replace(regex, '<mark class="search-highlight">$1</mark>');
+                
+                // Create a temporary div to parse the highlighted HTML
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = highlightedHTML;
+                
+                // Replace the text node with the highlighted content
+                const parent = node.parentNode;
+                while (tempDiv.firstChild) {
+                    parent.insertBefore(tempDiv.firstChild, node);
+                }
+                parent.removeChild(node);
+            }
+        } else if (node.nodeType === Node.ELEMENT_NODE) {
+            // Recursively process child nodes
+            const children = Array.from(node.childNodes);
+            children.forEach(child => highlightTextNodes(child, searchTerm));
+        }
+    }
+    
+    // Apply highlighting to all text nodes
+    highlightTextNodes(container, searchTerm);
+    
+    return container.innerHTML;
 }
 
 // Menu action functions (placeholder implementations)
@@ -3237,8 +3265,9 @@ function applyCollectionNameFont() {
 
 function applyCollectionNameSize() {
     const collectionNameElement = document.getElementById('collectionNameDisplay');
-    if (collectionNameElement) {
-        collectionNameElement.style.fontSize = collectionNameSize;
+    const h2Element = collectionNameElement.parentElement;
+    if (collectionNameElement && h2Element) {
+        h2Element.style.fontSize = collectionNameSize;
     }
 }
 

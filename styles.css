@@ -547,8 +547,9 @@ body {
 .search-match-indicators {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
-    margin-top: 8px;
+    gap: 8px;
+    margin: 8px 0 4px 0;
+    justify-content: flex-start;
 }
 
 .match-indicator {
@@ -3729,7 +3730,7 @@ body {
 /* Collection Icon Styling */
 .collection-icon {
     margin-right: 8px;
-    font-size: 1em;
+    font-size: inherit;
     vertical-align: middle;
     display: inline-block;
 }
