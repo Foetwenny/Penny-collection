@@ -93,6 +93,7 @@ document.addEventListener('DOMContentLoaded', function() {
     renderAlbums();
     showEmptyAlbumsStateIfNeeded();
     initializeDarkMode();
+    initializeTheme();
     initializeSortEventListeners();
     updateCollectionNameDisplay();
     applyCollectionNameFont();
@@ -182,6 +183,19 @@ function initializeDarkMode() {
     }
 }
 
+function initializeTheme() {
+    const savedTheme = localStorage.getItem('selectedTheme') || 'default';
+    
+    // Apply the saved theme
+    if (savedTheme !== 'default') {
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    }
+    
+    // Update dark mode state to match theme
+    isDarkMode = (savedTheme === 'dark');
+    updateDarkModeToggleIcon();
+}
+
 function toggleDarkMode() {
     isDarkMode = !isDarkMode;
     localStorage.setItem('darkMode', isDarkMode);
@@ -202,6 +216,56 @@ function updateDarkModeToggleIcon() {
         if (icon) {
             icon.className = isDarkMode ? 'fas fa-sun' : 'fas fa-moon';
         }
+    }
+}
+
+function changeTheme(themeName) {
+    // Remove existing theme attribute
+    document.documentElement.removeAttribute('data-theme');
+    
+    // Apply new theme (except for default)
+    if (themeName !== 'default') {
+        document.documentElement.setAttribute('data-theme', themeName);
+    }
+    
+    // Save theme preference
+    localStorage.setItem('selectedTheme', themeName);
+    
+    // Update theme selection in UI
+    updateThemeSelection(themeName);
+    
+    // Update dark mode toggle to match theme
+    const darkModeToggle = document.getElementById('darkModeToggle');
+    if (darkModeToggle) {
+        darkModeToggle.checked = (themeName === 'dark');
+        isDarkMode = (themeName === 'dark');
+    }
+    
+    // Play sound feedback
+    playSound('buttonClick');
+    
+    // Show notification
+    const themeNames = {
+        'default': 'Default',
+        'dark': 'Dark',
+        'ocean': 'Ocean',
+        'neon': 'Neon',
+        'forest': 'Forest',
+        'sunset': 'Sunset'
+    };
+    showNotification(`${themeNames[themeName]} theme applied`, 'success');
+}
+
+function updateThemeSelection(selectedTheme) {
+    // Remove selected class from all theme options
+    document.querySelectorAll('.theme-option').forEach(option => {
+        option.classList.remove('selected');
+    });
+    
+    // Add selected class to current theme
+    const selectedOption = document.querySelector(`[data-theme="${selectedTheme}"]`);
+    if (selectedOption) {
+        selectedOption.classList.add('selected');
     }
 }
 
@@ -2432,12 +2496,18 @@ function saveCollectionAs() {
     // If user entered empty string, use default
     const finalName = cleanName || defaultName;
     
-    // Include collection name in export data
+    // Include collection name and styling options in export data
     const exportData = {
         collectionName: collectionName,
+        collectionNameFont: collectionNameFont,
+        collectionNameSize: collectionNameSize,
+        collectionNameColor: collectionNameColor,
+        collectionNameBackground: collectionNameBackground,
+        collectionNameOutline: collectionNameOutline,
+        collectionNameIcon: collectionNameIcon,
         albums: albums,
         exportDate: new Date().toISOString(),
-        version: "1.0"
+        version: "1.1"
     };
     
     const dataStr = JSON.stringify(exportData, null, 2);
@@ -2509,6 +2579,31 @@ Do you want to continue?`;
                         // Import collection name if it exists
                         if (importedData.collectionName) {
                             setCollectionName(importedData.collectionName);
+                        }
+                        
+                        // Import collection name styling options if they exist (version 1.1+)
+                        if (importedData.version === "1.1" || importedData.collectionNameFont) {
+                            if (importedData.collectionNameFont) {
+                                setCollectionNameFont(importedData.collectionNameFont);
+                            }
+                            if (importedData.collectionNameSize) {
+                                setCollectionNameSize(importedData.collectionNameSize);
+                            }
+                            if (importedData.collectionNameColor) {
+                                setCollectionNameColor(importedData.collectionNameColor);
+                            }
+                            if (importedData.collectionNameBackground) {
+                                setCollectionNameBackground(importedData.collectionNameBackground);
+                            }
+                            if (importedData.collectionNameOutline) {
+                                setCollectionNameOutline(importedData.collectionNameOutline);
+                            }
+                            if (importedData.collectionNameIcon) {
+                                setCollectionNameIcon(importedData.collectionNameIcon);
+                            }
+                        }
+                        
+                        if (importedData.collectionName) {
                             showNotification(`Collection "${importedData.collectionName}" loaded successfully! ${importedAlbumCount} albums loaded.`, 'success');
                         } else {
                             showNotification(`Collection loaded successfully! ${importedAlbumCount} albums loaded.`, 'success');
@@ -2642,9 +2737,15 @@ function createAutomaticBackup() {
     try {
         const backupData = {
             collectionName: collectionName,
+            collectionNameFont: collectionNameFont,
+            collectionNameSize: collectionNameSize,
+            collectionNameColor: collectionNameColor,
+            collectionNameBackground: collectionNameBackground,
+            collectionNameOutline: collectionNameOutline,
+            collectionNameIcon: collectionNameIcon,
             albums: albums,
             backupDate: new Date().toISOString(),
-            version: "1.0",
+            version: "1.1",
             backupType: "automatic_pre_import"
         };
         
@@ -2770,6 +2871,10 @@ function loadDisplayPreferences() {
     const volumeSlider = document.getElementById('soundVolumeSlider');
     const volumeDisplay = document.getElementById('volumeDisplay');
     const darkModeToggle = document.getElementById('darkModeToggle');
+    
+    // Load theme settings
+    const currentTheme = localStorage.getItem('selectedTheme') || 'default';
+    updateThemeSelection(currentTheme);
     
     if (soundToggle) {
         soundToggle.checked = audioSystem.enabled;
@@ -3400,15 +3505,6 @@ function openCollectionSettings() {
                     </div>
                     <small>Choose an icon to display before your collection name.</small>
                 </div>
-                <div class="form-group">
-                    <h4>Quick Options:</h4>
-                    <div class="quick-options">
-                        <button class="quick-option-btn" onclick="setQuickName('My Collection')">My Collection</button>
-                        <button class="quick-option-btn" onclick="setQuickName('Penny Adventures')">Penny Adventures</button>
-                        <button class="quick-option-btn" onclick="setQuickName('Travel Memories')">Travel Memories</button>
-                        <button class="quick-option-btn" onclick="setQuickName('Your Albums')">Your Albums</button>
-                    </div>
-                </div>
             </div>
             <div class="modal-footer">
                 <button class="cancel-btn" onclick="closeCollectionSettingsModal()">Cancel</button>
@@ -3474,9 +3570,6 @@ function closeCollectionSettingsModal() {
     }
 }
 
-function setQuickName(name) {
-    document.getElementById('collectionNameInput').value = name;
-}
 
 function saveCollectionSettings() {
     const nameInput = document.getElementById('collectionNameInput');

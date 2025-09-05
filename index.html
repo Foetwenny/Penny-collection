@@ -54,9 +54,6 @@
                     <button id="createAlbumBtn" class="create-album-btn" onclick="openCreateAlbumModal()">
                         <i class="fas fa-plus"></i> Create New Album
                     </button>
-                    <button id="darkModeToggle" class="dark-mode-toggle" onclick="toggleDarkMode()" title="Toggle Dark Mode">
-                        <i class="fas fa-moon"></i>
-                    </button>
                     <div class="menu-dropdown">
                         <button id="menuToggle" class="menu-toggle" onclick="toggleMenu()" title="Menu">
                             <i class="fas fa-ellipsis-v"></i>
@@ -1309,6 +1306,37 @@
                                         <span class="preference-text">Dark Mode</span>
                                     </label>
                                     <p class="preference-description">Switch between light and dark themes</p>
+                                </div>
+                                
+                                <div class="preference-item">
+                                    <label class="preference-label">Theme</label>
+                                    <div class="theme-options">
+                                        <div class="theme-option" data-theme="default" onclick="changeTheme('default')" title="Default">
+                                            <div class="theme-preview default-theme"></div>
+                                            <span>Default</span>
+                                        </div>
+                                        <div class="theme-option" data-theme="dark" onclick="changeTheme('dark')" title="Dark">
+                                            <div class="theme-preview dark-theme"></div>
+                                            <span>Dark</span>
+                                        </div>
+                                        <div class="theme-option" data-theme="ocean" onclick="changeTheme('ocean')" title="Ocean">
+                                            <div class="theme-preview ocean-theme"></div>
+                                            <span>Ocean</span>
+                                        </div>
+                                        <div class="theme-option" data-theme="neon" onclick="changeTheme('neon')" title="Neon">
+                                            <div class="theme-preview neon-theme"></div>
+                                            <span>Neon</span>
+                                        </div>
+                                        <div class="theme-option" data-theme="forest" onclick="changeTheme('forest')" title="Forest">
+                                            <div class="theme-preview forest-theme"></div>
+                                            <span>Forest</span>
+                                        </div>
+                                        <div class="theme-option" data-theme="sunset" onclick="changeTheme('sunset')" title="Sunset">
+                                            <div class="theme-preview sunset-theme"></div>
+                                            <span>Sunset</span>
+                                        </div>
+                                    </div>
+                                    <p class="preference-description">Choose a color theme for the entire application</p>
                                 </div>
                                 
                             </div>
