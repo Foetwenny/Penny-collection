@@ -586,6 +586,26 @@ body {
     background: #8B7355;
 }
 
+.match-indicator.shared-match {
+    background: #8B7355;
+}
+
+.shared-album-marker {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 6px 12px;
+    margin: 8px 0;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: white;
+    background: #8B7355;
+    opacity: 0.9;
+    text-align: center;
+}
+
 .album-card.search-result {
     border: 2px solid var(--search-highlight-bg);
     box-shadow: 0 6px 20px var(--shadow-primary), 0 0 0 1px var(--search-highlight-bg);

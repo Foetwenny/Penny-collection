@@ -521,6 +521,7 @@ function performSearch() {
                 description: album.description && album.description.toLowerCase().includes(searchTerm),
                 categories: categoryMatch,
                 location: album.location && album.location.toLowerCase().includes(searchTerm),
+                isShared: album.isShared && (searchTerm === 'shared' || searchTerm === 'imported'),
                 pennies: album.pennies.filter(penny => {
                     if (!penny.description) return false;
                     // Strip HTML tags for searching
@@ -531,7 +532,7 @@ function performSearch() {
                 })
             };
             
-            const hasMatches = matches.name || matches.description || matches.categories || matches.location || matches.pennies.length > 0;
+            const hasMatches = matches.name || matches.description || matches.categories || matches.location || matches.isShared || matches.pennies.length > 0;
             
             return hasMatches ? { ...album, searchMatches: matches, searchTerm } : null;
         }).filter(Boolean);
@@ -618,6 +619,7 @@ function renderAlbums() {
                 <div class="album-header">
                     <h3 class="album-title">${album.name}</h3>
                 </div>
+                ${album.isShared ? '<div class="shared-album-marker"><i class="fas fa-share-alt"></i> Shared Album</div>' : ''}
                 <p class="album-description">${album.description || 'No description'}</p>
                 <div class="album-stats">
                     <span class="album-date">${album.tripDate ? `Trip: ${formatDateForDisplay(album.tripDate)}` : 'No trip date set'}</span>
@@ -770,6 +772,7 @@ function renderAlbumsWithSearchHighlights(filteredAlbums) {
         if (matches.description) matchIndicators.push('<span class="match-indicator desc-match"><i class="fas fa-align-left"></i> Description</span>');
         if (matches.categories) matchIndicators.push('<span class="match-indicator cat-match"><i class="fas fa-folder"></i> Category</span>');
         if (matches.location) matchIndicators.push('<span class="match-indicator loc-match"><i class="fas fa-map-marker-alt"></i> Location</span>');
+        if (matches.isShared) matchIndicators.push('<span class="match-indicator shared-match"><i class="fas fa-share-alt"></i> Shared Album</span>');
         if (matches.pennies && matches.pennies.length > 0) {
                             matchIndicators.push(`<span class="match-indicator penny-match"><i class="fas fa-coins"></i> ${matches.pennies.length} ${matches.pennies.length === 1 ? 'penny' : 'pennies'}</span>`);
         }
@@ -781,6 +784,7 @@ function renderAlbumsWithSearchHighlights(filteredAlbums) {
                 <div class="album-header">
                     <h3 class="album-title">${highlightedName}</h3>
                 </div>
+                ${album.isShared ? '<div class="shared-album-marker"><i class="fas fa-share-alt"></i> Shared Album</div>' : ''}
                 ${matchIndicators.length > 0 ? `<div class="search-match-indicators">${matchIndicators.join('')}</div>` : ''}
                 <p class="album-description">${highlightedDescription}</p>
                 <div class="album-stats">
@@ -2759,20 +2763,21 @@ function shareAlbum(albumId) {
         return;
     }
     
-    // Create album data for sharing
-    const albumData = {
-        albumName: album.name,
+    // Create album data for sharing - format it as a single album in an array
+    // so it can be imported using the existing loadCollection function
+    const albumData = [{
+        id: album.id,
+        name: album.name,
         description: album.description,
+        categories: album.categories || [],
         tripDate: album.tripDate,
         location: album.location,
         locationUrl: album.locationUrl,
         imageUrl: album.imageUrl,
         pennies: album.pennies,
-        createdDate: album.createdAt,
-        sharedDate: new Date().toISOString(),
-        version: "1.0",
-        type: "single_album"
-    };
+        createdAt: album.createdAt,
+        lastModified: album.lastModified || album.createdAt
+    }];
     
     // Create and download the file
     const albumStr = JSON.stringify(albumData, null, 2);
@@ -2790,6 +2795,77 @@ function shareAlbum(albumId) {
     
     URL.revokeObjectURL(albumUrl);
     showNotification(`Album "${album.name}" shared successfully!`, 'success');
+}
+
+// Import shared album function - adds to existing collection
+function importSharedAlbum() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    
+    input.onchange = function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    
+                    // Validate the imported data structure
+                    if (!validateImportData(importedData)) {
+                        showNotification('Invalid shared album file format. Please check the file and try again.', 'error');
+                        return;
+                    }
+                    
+                    // Handle shared album import (adds to existing collection)
+                    let albumsToImport = [];
+                    
+                    if (Array.isArray(importedData)) {
+                        // Array format (what our shareAlbum function creates)
+                        albumsToImport = importedData;
+                    } else if (importedData.albums && Array.isArray(importedData.albums)) {
+                        // Object with albums property
+                        albumsToImport = importedData.albums;
+                    }
+                    
+                    if (albumsToImport.length === 0) {
+                        showNotification('No albums found in the shared file.', 'error');
+                        return;
+                    }
+                    
+                    // Generate new IDs for imported albums to avoid conflicts
+                    // and mark them as shared albums
+                    albumsToImport.forEach(album => {
+                        album.id = Date.now().toString();
+                        album.isShared = true; // Mark as shared album
+                        // Also generate new IDs for pennies to avoid conflicts
+                        if (album.pennies && Array.isArray(album.pennies)) {
+                            album.pennies.forEach(penny => {
+                                penny.id = Date.now().toString();
+                            });
+                        }
+                    });
+                    
+                    // Add imported albums to existing collection
+                    albums.push(...albumsToImport);
+                    
+                    // Save to storage and refresh display
+                    saveAlbumsToStorage();
+                    renderAlbums();
+                    updateCollectionSummary();
+                    
+                    showNotification(`Successfully imported ${albumsToImport.length} shared album${albumsToImport.length === 1 ? '' : 's'}!`, 'success');
+                    
+                } catch (error) {
+                    console.error('Import shared album error:', error);
+                    showNotification('Failed to import shared album. The file may be corrupted or in an invalid format.', 'error');
+                }
+            };
+            reader.readAsText(file);
+        }
+    };
+    
+    input.click();
 }
 
 // Create new collection function
