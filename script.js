@@ -549,14 +549,14 @@ function updateSearchResults(results, query) {
     const searchResultsQuery = document.getElementById('searchResultsQuery');
     
     if (results.length > 0) {
-        searchResultsCount.textContent = `${results.length} result${results.length === 1 ? '' : 's'}`;
+        searchResultsCount.textContent = `${results.length} album${results.length === 1 ? '' : 's'} with matches`;
         searchResultsQuery.textContent = `for "${query}"`;
         searchResultsSection.style.display = 'block';
         
         // Play search sound when results are found
         playSound('menuClick');
     } else {
-        searchResultsCount.textContent = 'No results found';
+        searchResultsCount.textContent = 'No albums found';
         searchResultsQuery.textContent = `for "${query}"`;
         searchResultsSection.style.display = 'block';
     }
@@ -2606,8 +2606,9 @@ function showEmptyAlbumsStateIfNeeded() {
 
 // Save Collection As function to prevent data loss
 function saveCollectionAs() {
-    // Prompt user for custom filename
-    const defaultName = `penny-collection-backup-${new Date().toISOString().split('T')[0]}`;
+    // Prompt user for custom filename - use collection name as default
+    const collectionNameForFile = collectionName.replace(/[<>:"/\\|?*]/g, '_').trim() || 'penny-collection';
+    const defaultName = `${collectionNameForFile}-backup-${new Date().toISOString().split('T')[0]}`;
     const customName = prompt('Enter a name for your backup file:', defaultName);
     
     // If user cancels, don't export
