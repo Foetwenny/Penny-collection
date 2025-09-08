@@ -8,6 +8,9 @@
     <link rel="stylesheet" href="album-styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;700;900&family=Dancing+Script:wght@400;600;700&family=Great+Vibes&family=Merriweather:wght@300;400;700&family=Roboto:wght@300;400;500;700&family=Bebas+Neue&family=Oswald:wght@300;400;500;600;700&family=Lobster&family=Pacifico&family=Righteous&family=Fredoka+One&family=Comfortaa:wght@300;400;500;600;700&family=Quicksand:wght@300;400;500;600;700&family=Montserrat:wght@300;400;500;600;700&family=Source+Code+Pro:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
     
     <!-- Google AI Configuration -->
     <script>
@@ -53,6 +56,9 @@
                     </div>
                     <button id="createAlbumBtn" class="create-album-btn" onclick="openCreateAlbumModal()">
                         <i class="fas fa-plus"></i> Create New Album
+                    </button>
+                    <button id="mapViewBtn" class="map-view-btn" onclick="openMapView()" title="Travel Map">
+                        <i class="fas fa-map-marked-alt"></i> Travel Map
                     </button>
                     <div class="menu-dropdown">
                         <button id="menuToggle" class="menu-toggle" onclick="toggleMenu()" title="Menu">
@@ -1489,11 +1495,33 @@
                     </div>
                 </div>
             </div>
+            
+            <!-- Travel Map Modal -->
+            <div class="modal" id="mapModal">
+                <div class="modal-content map-modal-content">
+                    <div class="modal-header">
+                        <h3><i class="fas fa-map-marked-alt"></i> Travel Map</h3>
+                        <button class="close-btn" onclick="closeMapView()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="mapContainer" class="map-container">
+                            <div id="mapLoading" class="map-loading">
+                                <i class="fas fa-spinner fa-spin"></i>
+                                <p>Loading map...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </main>
     </div>
 
 
 
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
     <script src="config.js"></script>
     <script src="ai-config.js"></script>
     <script src="script.js"></script>

@@ -7,6 +7,12 @@ let currentAnalysis = null;
 let isSharedView = false; // Track if we're viewing a shared album
 let currentPennyIndex = -1; // Track current penny index for navigation
 let currentPennySearchTerm = ''; // Track search term for navigation context
+let currentDisplayOrder = []; // Track current display order of pennies for navigation
+
+// Map variables
+let map = null;
+let mapMarkers = [];
+let geocodedLocations = new Map(); // Cache for geocoded locations
 
 // IndexedDB Configuration
 const DB_NAME = 'PennyCollectionDB';
@@ -216,6 +222,42 @@ const pennyViewModal = document.getElementById('pennyViewModal');
 const editModal = document.getElementById('editModal');
 const emptyAlbumsState = document.getElementById('emptyAlbumsState');
 
+// Fix albums with duplicate penny IDs (for existing shared albums)
+function fixDuplicatePennyIds() {
+    let fixedCount = 0;
+    albums.forEach(album => {
+        if (album.pennies && Array.isArray(album.pennies)) {
+            const pennyIds = new Set();
+            const duplicateIds = new Set();
+            
+            // Find duplicate IDs
+            album.pennies.forEach(penny => {
+                if (pennyIds.has(penny.id)) {
+                    duplicateIds.add(penny.id);
+                } else {
+                    pennyIds.add(penny.id);
+                }
+            });
+            
+            // Fix duplicate IDs
+            if (duplicateIds.size > 0) {
+                let counter = 1;
+                album.pennies.forEach(penny => {
+                    if (duplicateIds.has(penny.id)) {
+                        penny.id = (Date.now() + counter++).toString();
+                        fixedCount++;
+                    }
+                });
+            }
+        }
+    });
+    
+    if (fixedCount > 0) {
+        console.log(`Fixed ${fixedCount} duplicate penny IDs`);
+        saveAlbumsToStorage();
+    }
+}
+
 // Initialize the application
 document.addEventListener('DOMContentLoaded', async function() {
     try {
@@ -227,6 +269,9 @@ document.addEventListener('DOMContentLoaded', async function() {
         
         // Load albums from IndexedDB
         await loadAlbumsFromIndexedDB();
+        
+        // Fix any duplicate penny IDs in existing albums
+        fixDuplicatePennyIds();
         
         // Initialize the rest of the app
         initializeEventListeners();
@@ -636,8 +681,7 @@ function renderAlbums() {
                     </span>
                 </div>
                 ${album.location ? `<div class="album-location">
-                    <i class="fas fa-map-marker-alt"></i> 
-                    ${(album.locationUrl && album.locationUrl.trim()) ? `<a href="${album.locationUrl}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();" title="Open location in new window">${album.location}</a>` : album.location}
+                    <i class="fas fa-map-marker-alt"></i> ${album.location}
                 </div>` : ''}
                 <div class="album-actions">
                     <button class="album-action-btn share-btn" onclick="event.stopPropagation(); shareAlbum('${album.id}')" title="Share Album">
@@ -805,8 +849,7 @@ function renderAlbumsWithSearchHighlights(filteredAlbums) {
                     </span>
                 </div>
                 ${highlightedLocation ? `<div class="album-location">
-                    <i class="fas fa-map-marker-alt"></i> 
-                    ${(album.locationUrl && album.locationUrl.trim()) ? `<a href="${album.locationUrl}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();" title="Open location in new window">${highlightedLocation}</a>` : highlightedLocation}
+                    <i class="fas fa-map-marker-alt"></i> ${highlightedLocation}
                 </div>` : ''}
                 <div class="album-actions">
                     <button class="album-action-btn share-btn" onclick="event.stopPropagation(); shareAlbum('${album.id}')" title="Share Album">
@@ -1855,6 +1898,7 @@ document.addEventListener('keydown', function(event) {
         closeAboutModal();
         closeVersionInfoModal();
         closeDisplayPreferencesModal();
+        closeMapView();
     }
     
     // Penny navigation keyboard shortcuts (only when penny view modal is open)
@@ -1866,6 +1910,12 @@ document.addEventListener('keydown', function(event) {
         } else if (event.key === 'ArrowRight') {
             event.preventDefault();
             navigateToNextPenny();
+        } else if (event.key === 'ArrowUp') {
+            event.preventDefault();
+            scrollPennyModalContent('up');
+        } else if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            scrollPennyModalContent('down');
         }
     }
 });
@@ -2004,7 +2054,7 @@ function openAlbumView(albumId) {
                 <div class="album-info-text">
                     <h2 class="album-hero-title">${currentAlbum.name}</h2>
                     <div class="album-hero-details">
-                        ${currentAlbum.location ? `<span class="album-hero-location"><i class="fas fa-map-marker-alt"></i> ${currentAlbum.location}</span>` : ''}
+                        ${currentAlbum.location ? `<span class="album-hero-location"><i class="fas fa-map-marker-alt"></i> ${currentAlbum.locationUrl ? `<a href="${currentAlbum.locationUrl}" target="_blank" rel="noopener noreferrer">${currentAlbum.location}</a>` : currentAlbum.location}</span>` : ''}
                         ${currentAlbum.tripDate ? `<span class="album-hero-date"><i class="fas fa-calendar"></i> ${formatDateForDisplay(currentAlbum.tripDate)}</span>` : ''}
                     </div>
                 </div>
@@ -2055,6 +2105,7 @@ function closeAlbumView() {
     document.getElementById('albumViewScreen').style.display = 'none';
     currentAlbum = null;
     isSharedView = false;
+    currentDisplayOrder = []; // Reset display order
     resetUpload();
     
     // Play page turn sound for closing album
@@ -2142,6 +2193,9 @@ function renderAlbumPenniesWithSearchHighlights() {
     // Combine arrays: matching pennies first, then non-matching
     const reorderedPennies = [...matchingPennies, ...nonMatchingPennies];
     
+    // Store the current display order for navigation
+    currentDisplayOrder = reorderedPennies.map(penny => penny.id);
+    
     if (reorderedPennies.length === 0) {
         penniesGrid.innerHTML = `
             <div class="empty-state">
@@ -2202,10 +2256,12 @@ function renderAlbumPenniesNormal() {
     // Clear the grid first to force re-render
     penniesGrid.innerHTML = '';
     
-    penniesGrid.innerHTML = currentAlbum.pennies.map(penny => {
+    // Store the current display order for navigation (normal order)
+    currentDisplayOrder = currentAlbum.pennies.map(penny => penny.id);
+    
+    penniesGrid.innerHTML = currentAlbum.pennies.map((penny, index) => {
         // Don't add cache-busting to base64 data URLs
         const imageSrc = penny.imageData.startsWith('data:') ? penny.imageData : `${penny.imageData}${penny.imageUpdated ? '?t=' + penny.imageUpdated : ''}`;
-        console.log('Rendering penny card:', penny.name, 'Image src:', imageSrc.substring(0, 50) + '...');
         return `
         <div class="penny-item" data-penny-id="${penny.id}" data-search-term="${currentAlbum.currentSearchContext || ''}">
             <img src="${imageSrc}" alt="${penny.name}" class="penny-image" onclick="openPennyViewFromElement(this.parentElement)" onerror="console.log('Image failed to load for penny:', '${penny.name}')">
@@ -2380,6 +2436,7 @@ function openPennyViewFromElement(pennyElement) {
     const pennyId = pennyElement.dataset.pennyId;
     const searchTerm = pennyElement.dataset.searchTerm || '';
     
+    
     // Play coin clink sound when clicking a penny
     playSound('coinClink');
     
@@ -2388,11 +2445,21 @@ function openPennyViewFromElement(pennyElement) {
 
 function openPennyView(pennyId, searchTerm = '') {
     const penny = currentAlbum.pennies.find(p => p.id === pennyId);
-    if (!penny) return;
+    if (!penny) {
+        console.error('Penny not found:', pennyId, 'in album:', currentAlbum.name);
+        return;
+    }
     
     // Track current penny index and search term for navigation
-    currentPennyIndex = currentAlbum.pennies.findIndex(p => p.id === pennyId);
+    // Use display order if available, otherwise fall back to original order
+    if (currentDisplayOrder.length > 0) {
+        currentPennyIndex = currentDisplayOrder.indexOf(pennyId);
+    } else {
+        currentPennyIndex = currentAlbum.pennies.findIndex(p => p.id === pennyId);
+    }
     currentPennySearchTerm = searchTerm;
+    
+    
     
     // Apply search highlighting if there's a search term
     const highlightedName = searchTerm ? highlightSearchTerm(penny.name, searchTerm) : penny.name;
@@ -2424,12 +2491,19 @@ function openPennyView(pennyId, searchTerm = '') {
     
     document.getElementById('pennyViewModal').style.display = 'block';
     
+    // Prevent background scrolling when modal is open
+    document.body.style.overflow = 'hidden';
+    
     // Update navigation button states
     updatePennyNavigationButtons();
 }
 
 function closePennyViewModal() {
     document.getElementById('pennyViewModal').style.display = 'none';
+    
+    // Restore background scrolling when modal is closed
+    document.body.style.overflow = '';
+    
     // Reset navigation state
     currentPennyIndex = -1;
     currentPennySearchTerm = '';
@@ -2437,10 +2511,11 @@ function closePennyViewModal() {
 
 // Penny Navigation Functions
 function navigateToPreviousPenny() {
-    if (currentPennyIndex <= 0 || !currentAlbum || !currentAlbum.pennies) return;
+    if (currentPennyIndex <= 0 || currentDisplayOrder.length === 0) return;
     
     const prevIndex = currentPennyIndex - 1;
-    const prevPenny = currentAlbum.pennies[prevIndex];
+    const prevPennyId = currentDisplayOrder[prevIndex];
+    const prevPenny = currentAlbum.pennies.find(p => p.id === prevPennyId);
     if (prevPenny) {
         openPennyView(prevPenny.id, currentPennySearchTerm);
         // Play navigation sound
@@ -2449,10 +2524,11 @@ function navigateToPreviousPenny() {
 }
 
 function navigateToNextPenny() {
-    if (!currentAlbum || !currentAlbum.pennies || currentPennyIndex >= currentAlbum.pennies.length - 1) return;
+    if (currentDisplayOrder.length === 0 || currentPennyIndex >= currentDisplayOrder.length - 1) return;
     
     const nextIndex = currentPennyIndex + 1;
-    const nextPenny = currentAlbum.pennies[nextIndex];
+    const nextPennyId = currentDisplayOrder[nextIndex];
+    const nextPenny = currentAlbum.pennies.find(p => p.id === nextPennyId);
     if (nextPenny) {
         openPennyView(nextPenny.id, currentPennySearchTerm);
         // Play navigation sound
@@ -2464,13 +2540,32 @@ function updatePennyNavigationButtons() {
     const prevBtn = document.querySelector('.penny-nav-btn.prev-btn');
     const nextBtn = document.querySelector('.penny-nav-btn.next-btn');
     
-    if (!prevBtn || !nextBtn || !currentAlbum || !currentAlbum.pennies) return;
+    if (!prevBtn || !nextBtn || currentDisplayOrder.length === 0) return;
     
     // Enable/disable previous button
     prevBtn.disabled = currentPennyIndex <= 0;
     
     // Enable/disable next button
-    nextBtn.disabled = currentPennyIndex >= currentAlbum.pennies.length - 1;
+    nextBtn.disabled = currentPennyIndex >= currentDisplayOrder.length - 1;
+}
+
+function scrollPennyModalContent(direction) {
+    const pennyViewModal = document.getElementById('pennyViewModal');
+    if (!pennyViewModal || pennyViewModal.style.display !== 'block') return;
+    
+    const modalContent = pennyViewModal.querySelector('.penny-view-content');
+    if (!modalContent) return;
+    
+    const scrollAmount = 50; // pixels to scroll per key press
+    
+    if (direction === 'up') {
+        modalContent.scrollTop = Math.max(0, modalContent.scrollTop - scrollAmount);
+    } else if (direction === 'down') {
+        modalContent.scrollTop = Math.min(
+            modalContent.scrollHeight - modalContent.clientHeight,
+            modalContent.scrollTop + scrollAmount
+        );
+    }
 }
 
 function saveAlbumEdit() {
@@ -3157,8 +3252,8 @@ function importSharedAlbum() {
                         album.isShared = true; // Mark as shared album
                         // Also generate new IDs for pennies to avoid conflicts
                         if (album.pennies && Array.isArray(album.pennies)) {
-                            album.pennies.forEach(penny => {
-                                penny.id = Date.now().toString();
+                            album.pennies.forEach((penny, index) => {
+                                penny.id = (Date.now() + index).toString();
                             });
                         }
                     });
@@ -3392,6 +3487,288 @@ function closeDisplayPreferencesModal() {
     if (displayPreferencesModal) {
         displayPreferencesModal.style.display = 'none';
     }
+}
+
+// Map Functions
+function openMapView() {
+    const mapModal = document.getElementById('mapModal');
+    if (mapModal) {
+        mapModal.style.display = 'block';
+        
+        // Play modal swish sound
+        playSound('modalSwish');
+        
+        // Initialize map if not already done
+        if (!map) {
+            initializeMap();
+        } else {
+            // Refresh markers if map already exists
+            updateMapMarkers();
+        }
+    }
+}
+
+function closeMapView() {
+    const mapModal = document.getElementById('mapModal');
+    if (mapModal) {
+        mapModal.style.display = 'none';
+        
+        // Play modal swish sound
+        playSound('modalSwish');
+    }
+}
+
+function initializeMap() {
+    const mapContainer = document.getElementById('mapContainer');
+    const mapLoading = document.getElementById('mapLoading');
+    
+    if (!mapContainer) return;
+    
+    // Initialize the map with a clean, minimal style
+    map = L.map('mapContainer', {
+        zoomControl: true,
+        attributionControl: true
+    }).setView([20, 0], 2); // Center on world view
+    
+    // Add a clean, minimal tile layer
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 18
+    }).addTo(map);
+    
+    // Hide loading indicator
+    if (mapLoading) {
+        mapLoading.style.display = 'none';
+    }
+    
+    // Add markers for albums
+    updateMapMarkers();
+}
+
+function updateMapMarkers() {
+    if (!map) return;
+    
+    // Clear existing markers
+    mapMarkers.forEach(marker => {
+        map.removeLayer(marker);
+    });
+    mapMarkers = [];
+    
+    // Collect all unique locations
+    const locationMap = new Map(); // locationKey -> {album, locationName, locationSource}
+    
+    console.log('DEBUG - Scanning albums for locations:', albums.length, 'albums');
+    
+    albums.forEach(album => {
+        console.log('DEBUG - Album:', album.name, 'album.locationUrl:', album.locationUrl);
+        
+        // ALBUM-LEVEL FIRST: If album has locationUrl, use that
+        if (album.locationUrl && album.locationUrl.trim() !== '') {
+            console.log('DEBUG - Using album locationUrl:', album.locationUrl);
+            locationMap.set(album.locationUrl, {
+                album: album,
+                locationName: album.location || album.name,
+                locationSource: 'album'
+            });
+        }
+        // PENNY-LEVEL FALLBACK: If no album locationUrl, check pennies
+        else if (album.pennies && album.pennies.length > 0) {
+            console.log('DEBUG - No album locationUrl, checking pennies...');
+            album.pennies.forEach(penny => {
+                if (penny.locationUrl && penny.locationUrl.trim() !== '') {
+                    console.log('DEBUG - Using penny locationUrl:', penny.locationUrl, 'from penny:', penny.name);
+                    // Only add if we haven't seen this location before
+                    if (!locationMap.has(penny.locationUrl)) {
+                        locationMap.set(penny.locationUrl, {
+                            album: album,
+                            locationName: penny.location || penny.name,
+                            locationSource: 'penny'
+                        });
+                    }
+                }
+            });
+        }
+    });
+    
+    console.log('DEBUG - Found', locationMap.size, 'unique locations');
+    
+    if (locationMap.size === 0) {
+        showNotification('No location data found', 'info');
+        return;
+    }
+    
+    // Geocode each unique location and add markers (with delay to avoid rate limiting)
+    let geocodingPromises = [];
+    let delay = 0;
+    locationMap.forEach((data, locationKey) => {
+        console.log('DEBUG - Geocoding location:', locationKey);
+        // Add delay between requests to avoid rate limiting
+        geocodingPromises.push(
+            new Promise(resolve => {
+                setTimeout(() => {
+                    geocodeLocation(locationKey, data.album, data.locationName, data.locationSource)
+                        .then(resolve)
+                        .catch(resolve);
+                }, delay);
+                delay += 1000; // 1 second delay between requests
+            })
+        );
+    });
+    
+    // Wait for all geocoding to complete and show summary
+    Promise.allSettled(geocodingPromises).then(results => {
+        const successful = results.filter(r => r.status === 'fulfilled').length;
+        const failed = results.filter(r => r.status === 'rejected').length;
+        console.log(`DEBUG - Geocoding complete: ${successful} successful, ${failed} failed`);
+        if (failed > 0) {
+            console.log('Failed locations:', results.filter(r => r.status === 'rejected').map(r => r.reason));
+        }
+    });
+}
+
+async function geocodeLocation(locationKey, album, locationName, locationSource) {
+    console.log('DEBUG - Processing location:', locationKey, 'for album:', album.name, 'source:', locationSource);
+    
+    let coords = null;
+    
+    // Extract coordinates directly from Google Maps URL if it's a URL
+    if (locationKey.startsWith('https://www.google.com/maps/place/')) {
+        // Extract coordinates from the URL format: @lat,lng,zoom
+        // Try to get the more precise coordinates first: !8m2!3dlat!4dlng
+        let coordMatch = locationKey.match(/!8m2!3d(-?\d+\.?\d*)!4d(-?\d+\.?\d*)/);
+        let coordSource = 'precise';
+        if (!coordMatch) {
+            // Fallback to the @lat,lng,zoom format
+            coordMatch = locationKey.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*),/);
+            coordSource = 'standard';
+        }
+        console.log('DEBUG - Using', coordSource, 'coordinate format');
+        
+        if (coordMatch) {
+            const coord1 = parseFloat(coordMatch[1]);
+            const coord2 = parseFloat(coordMatch[2]);
+            
+            // Google Maps URLs can have coordinates in different orders
+            // Check if the first coordinate looks like a longitude (larger absolute value)
+            // and the second looks like a latitude (smaller absolute value)
+            let lat, lng;
+            if (Math.abs(coord1) > Math.abs(coord2) && Math.abs(coord1) > 90) {
+                // First coord is likely longitude, second is latitude
+                lng = coord1;
+                lat = coord2;
+                console.log('DEBUG - Detected lng,lat order - swapped coordinates');
+            } else {
+                // Standard lat,lng order
+                lat = coord1;
+                lng = coord2;
+                console.log('DEBUG - Using standard lat,lng order');
+            }
+            
+            // Check if coordinates need conversion from Web Mercator to WGS84
+            // Web Mercator coordinates are typically much larger numbers
+            let finalLat = lat;
+            let finalLng = lng;
+            
+            if (Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+                // These look like Web Mercator coordinates, convert to WGS84
+                console.log('DEBUG - Converting from Web Mercator to WGS84');
+                finalLat = (2 * Math.atan(Math.exp(lat * Math.PI / 180)) - Math.PI / 2) * 180 / Math.PI;
+                finalLng = lng * 180 / Math.PI;
+                console.log('DEBUG - Converted coordinates:', [finalLat, finalLng]);
+            }
+            
+            coords = [finalLat, finalLng];
+            console.log('DEBUG - Extracted coordinates from URL:', coords);
+            console.log('DEBUG - Original URL:', locationKey);
+            console.log('DEBUG - Final Lat:', finalLat, 'Lng:', finalLng);
+        } else {
+            console.warn('Could not extract coordinates from URL:', locationKey);
+            return;
+        }
+    } else {
+        // Fallback to geocoding for non-URL locations
+        console.log('DEBUG - Geocoding non-URL location:', locationKey);
+        
+        // Check cache first
+        if (geocodedLocations.has(locationKey)) {
+            coords = geocodedLocations.get(locationKey);
+            console.log('DEBUG - Using cached coordinates:', coords);
+        } else {
+            try {
+                // Use Nominatim (free) geocoding service
+                const geocodeUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(locationKey)}&limit=1`;
+                console.log('DEBUG - Fetching:', geocodeUrl);
+                
+                const response = await fetch(geocodeUrl);
+                const data = await response.json();
+                
+                console.log('DEBUG - Geocoding response:', data);
+                
+                if (data && data.length > 0) {
+                    coords = [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+                    console.log('DEBUG - Got coordinates from geocoding:', coords);
+                    
+                    // Cache the result
+                    geocodedLocations.set(locationKey, coords);
+                } else {
+                    console.warn(`Could not geocode location: ${locationKey}`);
+                    return;
+                }
+            } catch (error) {
+                console.error(`Geocoding error for ${locationKey}:`, error);
+                return;
+            }
+        }
+    }
+    
+    // Add marker to map with the coordinates
+    if (coords) {
+        addMarkerToMap(coords, album, locationName);
+    }
+}
+
+function addMarkerToMap(coords, album, locationName) {
+    if (!map) return;
+    
+    // Create a traditional tear-drop marker
+    const marker = L.marker(coords, {
+        icon: L.divIcon({
+            className: 'custom-marker',
+            html: '<div class="marker-pin"></div>',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34]
+        })
+    });
+    
+    // Create popup content
+    const popupContent = `
+        <div class="map-popup">
+            <h4>${album.name}</h4>
+            <p><strong>Location:</strong> ${locationName}</p>
+            <button class="map-popup-btn" onclick="openAlbumFromMap('${album.id}')">
+                <i class="fas fa-folder-open"></i> Open Album
+            </button>
+        </div>
+    `;
+    
+    marker.bindPopup(popupContent);
+    marker.addTo(map);
+    mapMarkers.push(marker);
+    
+    // Fit map to show all markers
+    if (mapMarkers.length > 0) {
+        const group = new L.featureGroup(mapMarkers);
+        map.fitBounds(group.getBounds().pad(0.1));
+    }
+}
+
+function openAlbumFromMap(albumId) {
+    // Close map modal
+    closeMapView();
+    
+    // Open the album
+    openAlbumView(albumId);
 }
 
 function loadDisplayPreferences() {
