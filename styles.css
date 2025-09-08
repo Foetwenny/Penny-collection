@@ -299,9 +299,9 @@ body {
 }
 
 .backup-btn, .restore-btn, .create-album-btn {
-    background: var(--accent-primary);
+    background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
     color: white;
-    border: none;
+    border: 1px solid rgba(0, 0, 0, 0.3);
     padding: 10px 20px;
     border-radius: 8px;
     font-size: 0.9rem;
@@ -311,12 +311,18 @@ body {
     display: flex;
     align-items: center;
     gap: 8px;
+    box-shadow: 0 2px 8px var(--shadow-secondary);
 }
 
 .backup-btn:hover, .restore-btn:hover, .create-album-btn:hover {
-    background: var(--accent-secondary);
+    background: linear-gradient(135deg, var(--accent-secondary), var(--accent-gold));
     transform: translateY(-2px);
     box-shadow: 0 4px 15px var(--shadow-secondary);
+}
+
+.backup-btn:active, .restore-btn:active, .create-album-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px var(--shadow-secondary);
 }
 
 /* Dark Mode Toggle Button */
@@ -375,9 +381,9 @@ body {
 }
 
 .menu-toggle {
-    background: var(--accent-primary);
+    background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
     color: white;
-    border: none;
+    border: 1px solid rgba(0, 0, 0, 0.3);
     padding: 12px 16px;
     border-radius: 8px;
     font-size: 0.9rem;
@@ -389,12 +395,18 @@ body {
     justify-content: center;
     min-width: 48px;
     height: 45px;
+    box-shadow: 0 2px 8px var(--shadow-secondary);
 }
 
 .menu-toggle:hover {
-    background: var(--accent-secondary);
+    background: linear-gradient(135deg, var(--accent-secondary), var(--accent-gold));
     transform: translateY(-2px);
-    box-shadow: 0 4px 15px var(--shadow-secondary);
+    box-shadow: 0 4px 12px var(--shadow-secondary);
+}
+
+.menu-toggle:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px var(--shadow-secondary);
 }
 
 .menu-toggle i {
@@ -1048,9 +1060,9 @@ body {
 }
 
 .edit-album-btn {
-    background: var(--accent-primary);
+    background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
     color: white;
-    border: none;
+    border: 1px solid rgba(0, 0, 0, 0.3);
     padding: 8px 16px;
     border-radius: 6px;
     font-size: 0.9rem;
@@ -1060,16 +1072,24 @@ body {
     display: flex;
     align-items: center;
     gap: 6px;
+    box-shadow: 0 2px 8px var(--shadow-secondary);
 }
 
 .edit-album-btn:hover {
-    background: var(--accent-secondary);
+    background: linear-gradient(135deg, var(--accent-secondary), var(--accent-gold));
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px var(--shadow-secondary);
+}
+
+.edit-album-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px var(--shadow-secondary);
 }
 
 .add-penny-btn {
-    background: var(--accent-primary);
+    background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
     color: white;
-    border: none;
+    border: 1px solid rgba(0, 0, 0, 0.3);
     padding: 8px 16px;
     border-radius: 6px;
     font-size: 0.9rem;
@@ -1079,10 +1099,18 @@ body {
     display: flex;
     align-items: center;
     gap: 6px;
+    box-shadow: 0 2px 8px var(--shadow-secondary);
 }
 
 .add-penny-btn:hover {
-    background: var(--accent-secondary);
+    background: linear-gradient(135deg, var(--accent-secondary), var(--accent-gold));
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px var(--shadow-secondary);
+}
+
+.add-penny-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px var(--shadow-secondary);
 }
 
 .delete-album-btn {
@@ -1479,30 +1507,30 @@ body {
 
 /* Map View Button */
 .map-view-btn {
-    background: linear-gradient(135deg, #8B4513, #A0522D);
+    background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
     color: white;
-    border: none;
+    border: 1px solid rgba(0, 0, 0, 0.3);
     padding: 12px 20px;
     border-radius: 8px;
     cursor: pointer;
     font-size: 0.9rem;
     font-weight: 500;
     transition: all 0.3s ease;
-    box-shadow: 0 2px 8px rgba(139, 69, 19, 0.3);
+    box-shadow: 0 2px 8px var(--shadow-secondary);
     display: flex;
     align-items: center;
     gap: 8px;
 }
 
 .map-view-btn:hover {
-    background: linear-gradient(135deg, #A0522D, #CD853F);
+    background: linear-gradient(135deg, var(--accent-secondary), var(--accent-gold));
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(139, 69, 19, 0.4);
+    box-shadow: 0 4px 12px var(--shadow-secondary);
 }
 
 .map-view-btn:active {
     transform: translateY(0);
-    box-shadow: 0 2px 6px rgba(139, 69, 19, 0.3);
+    box-shadow: 0 2px 6px var(--shadow-secondary);
 }
 
 /* Map Modal */
@@ -1643,14 +1671,18 @@ body {
 }
 
 .marker-pin {
-    width: 25px;
-    height: 41px;
+    width: 30px;
+    height: 30px;
     background: #8B4513;
     border: 2px solid #654321;
-    border-radius: 50% 50% 50% 0;
     transform: rotate(-45deg);
     position: relative;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    /* Create perfectly symmetrical tear-drop from square */
+    border-top-left-radius: 15px;
+    border-top-right-radius: 15px;
+    border-bottom-right-radius: 15px;
+    border-bottom-left-radius: 0;
 }
 
 .marker-pin::after {
@@ -1663,9 +1695,42 @@ body {
     height: 8px;
     background: white;
     border-radius: 50%;
+    /* Ensure the dot stays perfectly centered */
+    box-shadow: none;
 }
 
 /* Map Popup Styling */
+/* Marker Cluster Styling */
+.marker-cluster-small {
+    background-color: var(--accent-primary);
+    border: 2px solid var(--accent-secondary);
+    color: white;
+    border-radius: 50%;
+    font-weight: bold;
+    text-align: center;
+    line-height: 1;
+}
+
+.marker-cluster-medium {
+    background-color: var(--accent-secondary);
+    border: 2px solid var(--accent-gold);
+    color: white;
+    border-radius: 50%;
+    font-weight: bold;
+    text-align: center;
+    line-height: 1;
+}
+
+.marker-cluster-large {
+    background-color: var(--accent-gold);
+    border: 2px solid var(--accent-primary);
+    color: var(--accent-primary);
+    border-radius: 50%;
+    font-weight: bold;
+    text-align: center;
+    line-height: 1;
+}
+
 .map-popup {
     min-width: 200px;
     text-align: center;
@@ -2460,9 +2525,9 @@ body {
 }
 
 .back-btn {
-    background: var(--accent-primary);
+    background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
     color: white;
-    border: none;
+    border: 1px solid rgba(0, 0, 0, 0.3);
     padding: 12px 20px;
     border-radius: 8px;
     font-size: 1rem;
@@ -2472,11 +2537,18 @@ body {
     display: flex;
     align-items: center;
     gap: 8px;
+    box-shadow: 0 2px 8px var(--shadow-secondary);
 }
 
 .back-btn:hover {
-    background: var(--accent-secondary);
+    background: linear-gradient(135deg, var(--accent-secondary), var(--accent-gold));
     transform: translateY(-2px);
+    box-shadow: 0 4px 12px var(--shadow-secondary);
+}
+
+.back-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px var(--shadow-secondary);
 }
 
 .album-view-title {
@@ -2904,6 +2976,9 @@ body {
 .penny-view-image {
     text-align: center;
     margin-bottom: 20px;
+    overflow: hidden;
+    cursor: zoom-in;
+    user-select: none;
 }
 
 .penny-view-image img {
@@ -2911,6 +2986,8 @@ body {
     max-height: 300px;
     border-radius: 10px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease;
+    transform-origin: center center;
 }
 
 .penny-view-info h4 {

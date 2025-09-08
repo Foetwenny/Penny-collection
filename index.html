@@ -978,6 +978,7 @@
                         <div class="guide-navigation">
                             <button class="guide-nav-btn active" data-section="getting-started">Getting Started</button>
                             <button class="guide-nav-btn" data-section="collection">Collection</button>
+                            <button class="guide-nav-btn" data-section="travel-map">Travel Map</button>
                             <button class="guide-nav-btn" data-section="albums">Albums</button>
                             <button class="guide-nav-btn" data-section="search-sort">Search & Sort</button>
                             <button class="guide-nav-btn" data-section="pennies">Pennies</button>
@@ -1001,6 +1002,7 @@
                                  <ul>
                                      <li><strong>Header:</strong> Search bar, create album button, and menu</li>
                                      <li><strong>Menu (⋮):</strong> Access to advanced features, settings, and help</li>
+                                     <li><strong>Travel Map:</strong> Visualize your collection locations on an interactive map</li>
                                      <li><strong>Album Cards:</strong> Click to open full album view</li>
                                  </ul>
                             </div>
@@ -1029,6 +1031,50 @@
                                     <li><strong>Backup Status:</strong> Status bar shows when your collection was last backed up</li>
                                     <li><strong>Import Options:</strong> Load full collections or merge shared albums into existing collection</li>
                                     <li><strong>Export Options:</strong> Save entire collection or share individual albums</li>
+                                </ul>
+                            </div>
+                            
+                            <!-- Travel Map Section -->
+                            <div class="guide-section" id="travel-map">
+                                <h4><i class="fas fa-map-marked-alt"></i> Travel Map</h4>
+                                
+                                <h5>Visualizing Your Collection:</h5>
+                                <p>The Travel Map feature creates an interactive map showing all the locations where you've collected pennies. Access it by clicking the "Travel Map" button in the header.</p>
+                                
+                                <h5>Setting Up Location Data:</h5>
+                                <div class="guide-tip">
+                                    <strong>For albums with all pennies from the same location:</strong>
+                                    <ul>
+                                        <li>Add a <strong>Location URL</strong> to the album info when creating or editing the album</li>
+                                        <li>Use Google Maps URLs for best results (copy the "Share" link from Google Maps)</li>
+                                        <li>This will create one marker for the entire album</li>
+                                    </ul>
+                                </div>
+                                
+                                <div class="guide-tip">
+                                    <strong>For albums with pennies from different locations:</strong>
+                                    <ul>
+                                        <li>Leave the album Location URL empty</li>
+                                        <li>Add individual <strong>Location URLs</strong> to each penny's info</li>
+                                        <li>Each unique location will get its own marker on the map</li>
+                                        <li>Perfect for road trips or multi-location visits</li>
+                                    </ul>
+                                </div>
+                                
+                                <h5>Map Features:</h5>
+                                <ul>
+                                    <li><strong>Interactive Markers:</strong> Click any marker to see the location name and open the associated album</li>
+                                    <li><strong>Zoom & Pan:</strong> Navigate around the map to explore your travel history</li>
+                                    <li><strong>Precise Placement:</strong> Markers use exact coordinates from your Google Maps URLs</li>
+                                    <li><strong>Unique Locations:</strong> Multiple pennies from the same location show as one marker</li>
+                                </ul>
+                                
+                                <h5>Tips for Best Results:</h5>
+                                <ul>
+                                    <li><strong>Use Google Maps URLs:</strong> Copy the "Share" link from Google Maps for accurate coordinates</li>
+                                    <li><strong>Be Specific:</strong> Use exact location names (e.g., "USS Yorktown CV-10" instead of just "Charleston")</li>
+                                    <li><strong>Consistent Format:</strong> All location URLs should be Google Maps links for reliable geocoding</li>
+                                    <li><strong>Album vs Penny:</strong> Choose one approach per album - either album-level or penny-level locations, not both</li>
                                 </ul>
                             </div>
                             
@@ -1225,14 +1271,51 @@
                             <div class="version-current">
                                 <h4><i class="fas fa-tag"></i> Current Version</h4>
                                 <div class="version-badge">
-                                    <span class="version-number">2.2.0</span>
-                                    <span class="version-name">Collection Management Enhanced</span>
+                                    <span class="version-number">2.3.0</span>
+                                    <span class="version-name">Travel Map & Navigation</span>
                                 </div>
                                 <p class="version-date">Latest Release</p>
                             </div>
 
                             <div class="version-changelog">
-                                <h4><i class="fas fa-list-ul"></i> What's New in 2.2</h4>
+                                <h4><i class="fas fa-list-ul"></i> What's New in 2.3</h4>
+                                <div class="changelog-item">
+                                    <div class="changelog-header">
+                                        <i class="fas fa-map-marked-alt"></i>
+                                        <strong>Interactive Travel Map</strong>
+                                        <span class="changelog-badge new">NEW</span>
+                                    </div>
+                                    <p>Visualize your penny collection locations with an interactive map featuring precise markers for each unique location</p>
+                                </div>
+
+                                <div class="changelog-item">
+                                    <div class="changelog-header">
+                                        <i class="fas fa-arrows-alt-h"></i>
+                                        <strong>Penny Navigation Controls</strong>
+                                        <span class="changelog-badge new">NEW</span>
+                                    </div>
+                                    <p>Navigate through pennies in album view with next/previous arrow controls and keyboard shortcuts (left/right arrows)</p>
+                                </div>
+
+                                <div class="changelog-item">
+                                    <div class="changelog-header">
+                                        <i class="fas fa-link"></i>
+                                        <strong>Clickable Location Links</strong>
+                                        <span class="changelog-badge new">NEW</span>
+                                    </div>
+                                    <p>Album locations in the album view are now clickable links that open Google Maps in a new tab</p>
+                                </div>
+
+                                <div class="changelog-item">
+                                    <div class="changelog-header">
+                                        <i class="fas fa-share-alt"></i>
+                                        <strong>Enhanced Shared Album Support</strong>
+                                        <span class="changelog-badge improved">IMPROVED</span>
+                                    </div>
+                                    <p>Fixed navigation issues with imported shared albums and improved duplicate ID handling</p>
+                                </div>
+
+                                <h4><i class="fas fa-list-ul"></i> Previous Updates (2.2)</h4>
                                 <div class="changelog-item">
                                     <div class="changelog-header">
                                         <i class="fas fa-share-alt"></i>

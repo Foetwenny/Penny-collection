@@ -12,7 +12,20 @@ let currentDisplayOrder = []; // Track current display order of pennies for navi
 // Map variables
 let map = null;
 let mapMarkers = [];
+let markerClusterGroup = null;
 let geocodedLocations = new Map(); // Cache for geocoded locations
+
+// Penny view zoom variables
+let pennyZoomLevel = 1;
+let pennyZoomMin = 0.5;
+let pennyZoomMax = 3;
+let pennyPanX = 0;
+let pennyPanY = 0;
+let isDragging = false;
+let dragStartX = 0;
+let dragStartY = 0;
+let dragStartPanX = 0;
+let dragStartPanY = 0;
 
 // IndexedDB Configuration
 const DB_NAME = 'PennyCollectionDB';
@@ -1916,6 +1929,20 @@ document.addEventListener('keydown', function(event) {
         } else if (event.key === 'ArrowDown') {
             event.preventDefault();
             scrollPennyModalContent('down');
+        } else if (event.key === '+' || event.key === '=') {
+            event.preventDefault();
+            pennyZoomLevel = Math.min(pennyZoomMax, pennyZoomLevel + 0.2);
+            updatePennyZoom();
+        } else if (event.key === '-') {
+            event.preventDefault();
+            pennyZoomLevel = Math.max(pennyZoomMin, pennyZoomLevel - 0.2);
+            updatePennyZoom();
+        } else if (event.key === '0') {
+            event.preventDefault();
+            pennyZoomLevel = 1;
+            pennyPanX = 0;
+            pennyPanY = 0;
+            updatePennyZoom();
         }
     }
 });
@@ -1998,6 +2025,9 @@ function createAlbum() {
 function openAlbumView(albumId) {
     currentAlbum = albums.find(album => album.id === albumId);
     if (!currentAlbum) return;
+    
+    // Prevent body scrolling when album view is open
+    document.body.style.overflow = 'hidden';
     
     // Check if we're opening from search results and preserve search context
     const searchInput = document.getElementById('searchInput');
@@ -2107,6 +2137,9 @@ function closeAlbumView() {
     isSharedView = false;
     currentDisplayOrder = []; // Reset display order
     resetUpload();
+    
+    // Restore body scrolling when album view is closed
+    document.body.style.overflow = '';
     
     // Play page turn sound for closing album
     playSound('pageTurn');
@@ -2494,6 +2527,22 @@ function openPennyView(pennyId, searchTerm = '') {
     // Prevent background scrolling when modal is open
     document.body.style.overflow = 'hidden';
     
+    // Reset zoom and pan for new penny
+    pennyZoomLevel = 1;
+    pennyPanX = 0;
+    pennyPanY = 0;
+    updatePennyZoom();
+    
+    // Add mouse event listeners to penny image
+    const pennyImage = document.getElementById('pennyViewImage');
+    if (pennyImage) {
+        pennyImage.addEventListener('wheel', handlePennyZoom, { passive: false });
+        pennyImage.addEventListener('mousedown', handlePennyMouseDown);
+        pennyImage.addEventListener('mousemove', handlePennyMouseMove);
+        pennyImage.addEventListener('mouseup', handlePennyMouseUp);
+        pennyImage.addEventListener('mouseleave', handlePennyMouseUp);
+    }
+    
     // Update navigation button states
     updatePennyNavigationButtons();
 }
@@ -2504,9 +2553,87 @@ function closePennyViewModal() {
     // Restore background scrolling when modal is closed
     document.body.style.overflow = '';
     
+    // Remove all mouse event listeners
+    const pennyImage = document.getElementById('pennyViewImage');
+    if (pennyImage) {
+        pennyImage.removeEventListener('wheel', handlePennyZoom);
+        pennyImage.removeEventListener('mousedown', handlePennyMouseDown);
+        pennyImage.removeEventListener('mousemove', handlePennyMouseMove);
+        pennyImage.removeEventListener('mouseup', handlePennyMouseUp);
+        pennyImage.removeEventListener('mouseleave', handlePennyMouseUp);
+    }
+    
     // Reset navigation state
     currentPennyIndex = -1;
     currentPennySearchTerm = '';
+    
+    // Reset zoom and pan
+    pennyZoomLevel = 1;
+    pennyPanX = 0;
+    pennyPanY = 0;
+}
+
+// Penny Zoom Functions
+function handlePennyZoom(event) {
+    event.preventDefault();
+    
+    const delta = event.deltaY > 0 ? -0.1 : 0.1;
+    pennyZoomLevel = Math.max(pennyZoomMin, Math.min(pennyZoomMax, pennyZoomLevel + delta));
+    updatePennyZoom();
+}
+
+function updatePennyZoom() {
+    const pennyImage = document.getElementById('pennyViewImage');
+    if (pennyImage) {
+        pennyImage.style.transform = `scale(${pennyZoomLevel}) translate(${pennyPanX}px, ${pennyPanY}px)`;
+        pennyImage.style.transition = 'transform 0.2s ease';
+        
+        // Update cursor based on zoom level
+        if (!isDragging) {
+            pennyImage.style.cursor = pennyZoomLevel > 1 ? 'grab' : 'zoom-in';
+        }
+    }
+}
+
+function handlePennyMouseDown(event) {
+    if (pennyZoomLevel > 1) {
+        isDragging = true;
+        dragStartX = event.clientX;
+        dragStartY = event.clientY;
+        dragStartPanX = pennyPanX;
+        dragStartPanY = pennyPanY;
+        
+        // Change cursor to grabbing
+        const pennyImage = document.getElementById('pennyViewImage');
+        if (pennyImage) {
+            pennyImage.style.cursor = 'grabbing';
+        }
+        
+        event.preventDefault();
+    }
+}
+
+function handlePennyMouseMove(event) {
+    if (isDragging && pennyZoomLevel > 1) {
+        const deltaX = event.clientX - dragStartX;
+        const deltaY = event.clientY - dragStartY;
+        
+        pennyPanX = dragStartPanX + deltaX;
+        pennyPanY = dragStartPanY + deltaY;
+        
+        updatePennyZoom();
+        event.preventDefault();
+    }
+}
+
+function handlePennyMouseUp(event) {
+    isDragging = false;
+    
+    // Reset cursor based on zoom level
+    const pennyImage = document.getElementById('pennyViewImage');
+    if (pennyImage) {
+        pennyImage.style.cursor = pennyZoomLevel > 1 ? 'grab' : 'zoom-in';
+    }
 }
 
 // Penny Navigation Functions
@@ -3049,7 +3176,7 @@ function saveCollectionAs() {
         collectionNameIcon: collectionNameIcon,
         albums: albums,
         exportDate: new Date().toISOString(),
-        version: "1.1"
+        version: "2.3"
     };
     
     const dataStr = JSON.stringify(exportData, null, 2);
@@ -3359,7 +3486,7 @@ function createAutomaticBackup() {
             collectionNameIcon: collectionNameIcon,
             albums: albums,
             backupDate: new Date().toISOString(),
-            version: "1.1",
+            version: "2.3",
             backupType: "automatic_pre_import"
         };
         
@@ -3536,6 +3663,16 @@ function initializeMap() {
         maxZoom: 18
     }).addTo(map);
     
+    // Initialize marker cluster group
+    markerClusterGroup = L.markerClusterGroup({
+        chunkedLoading: true,
+        maxClusterRadius: 50, // Maximum radius to cluster markers
+        spiderfyOnMaxZoom: true, // Spiderfy markers when zoomed to max
+        showCoverageOnHover: false, // Don't show coverage on hover
+        zoomToBoundsOnClick: true // Zoom to bounds when cluster is clicked
+    });
+    map.addLayer(markerClusterGroup);
+    
     // Hide loading indicator
     if (mapLoading) {
         mapLoading.style.display = 'none';
@@ -3548,10 +3685,10 @@ function initializeMap() {
 function updateMapMarkers() {
     if (!map) return;
     
-    // Clear existing markers
-    mapMarkers.forEach(marker => {
-        map.removeLayer(marker);
-    });
+    // Clear existing markers from cluster group
+    if (markerClusterGroup) {
+        markerClusterGroup.clearLayers();
+    }
     mapMarkers = [];
     
     // Collect all unique locations
@@ -3753,13 +3890,18 @@ function addMarkerToMap(coords, album, locationName) {
     `;
     
     marker.bindPopup(popupContent);
-    marker.addTo(map);
+    
+    // Add marker to cluster group instead of directly to map
+    if (markerClusterGroup) {
+        markerClusterGroup.addLayer(marker);
+    } else {
+        marker.addTo(map);
+    }
     mapMarkers.push(marker);
     
     // Fit map to show all markers
-    if (mapMarkers.length > 0) {
-        const group = new L.featureGroup(mapMarkers);
-        map.fitBounds(group.getBounds().pad(0.1));
+    if (mapMarkers.length > 0 && markerClusterGroup) {
+        map.fitBounds(markerClusterGroup.getBounds().pad(0.1));
     }
 }
 
