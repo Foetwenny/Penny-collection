@@ -150,13 +150,12 @@
                         </div>
                         
                         <div class="summary-controls">
+                            <button id="toggleSharedBtn" class="toggle-shared-btn" onclick="toggleSharedAlbums()" title="Toggle shared albums visibility">
+                                <i class="fas fa-share-alt"></i> Hide Shared
+                            </button>
                             <button id="sortButton" class="sort-button" onclick="openSortOptions()" title="Change Sort Order">
                                 <i class="fas fa-sort"></i> Sort
                             </button>
-                            <div class="sort-indicator" id="sortIndicator">
-                                <i class="fas fa-sort"></i>
-                                <span id="sortIndicatorText">Sorted by Date Created (Newest First)</span>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -381,7 +380,12 @@
 
                     <!-- Pennies in Album -->
                     <div class="album-pennies">
-                        <h4><i class="fas fa-coins"></i> Pennies in this Album</h4>
+                        <div class="pennies-header">
+                            <h4><i class="fas fa-coins"></i> Pennies in this Album</h4>
+                            <button id="pennySortButton" class="penny-sort-button" onclick="openPennySortOptions()" title="Change Penny Sort Order">
+                                <i class="fas fa-sort"></i> Sort
+                            </button>
+                        </div>
                         <div class="pennies-grid" id="penniesGrid">
                             <!-- Pennies will be displayed here -->
                         </div>
@@ -437,6 +441,10 @@
                                 <input type="text" id="editLocation" required>
                             </div>
                             <div class="form-group">
+                                <label for="editLocationUrl">Location URL (optional):</label>
+                                <input type="url" id="editLocationUrl" placeholder="https://maps.google.com/... or other map link">
+                            </div>
+                            <div class="form-group">
                                 <label for="editDescription">Description:</label>
                                 <div id="editDescription" class="rich-text-editor" contenteditable="true" data-placeholder="Describe the penny design and details..."></div>
                             </div>
@@ -453,6 +461,94 @@
                     <div class="modal-footer">
                         <button class="cancel-btn" onclick="closeModal()">Cancel</button>
                         <button class="save-btn" onclick="saveEdit()">Save Changes</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Move Penny Modal -->
+            <div class="modal" id="movePennyModal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Move Penny to Album</h3>
+                        <button class="close-btn" onclick="closeMovePennyModal()">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="move-penny-info">
+                            <p><strong>Moving penny:</strong> <span id="movePennyName"></span></p>
+                            <p><strong>From album:</strong> <span id="moveFromAlbum"></span></p>
+                        </div>
+                        <div class="album-selection">
+                            <h4>Select destination album:</h4>
+                            <div id="moveAlbumList" class="album-list">
+                                <!-- Album options will be populated here -->
+                            </div>
+                        </div>
+                        <div class="modal-actions">
+                            <button class="btn btn-secondary" onclick="closeMovePennyModal()">Cancel</button>
+                            <button class="btn btn-primary" id="movePennyBtn" onclick="confirmMovePenny()" disabled>Move Penny</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Penny Sort Options Modal -->
+            <div class="modal" id="pennySortOptionsModal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3><i class="fas fa-sort"></i> Sort Pennies</h3>
+                        <button class="close-btn" onclick="closePennySortOptions()">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="sort-options">
+                            <div class="sort-group">
+                                <div class="sort-group-header">
+                                    <input type="radio" id="pennySortName" name="pennySort" value="name">
+                                    <label for="pennySortName">Penny Name</label>
+                                </div>
+                                <div class="sort-direction-buttons">
+                                    <button class="sort-direction-btn" data-sort="name" data-direction="asc" onclick="selectPennySortDirection('name', 'asc')">
+                                        <i class="fas fa-sort-alpha-down"></i> A to Z
+                                    </button>
+                                    <button class="sort-direction-btn" data-sort="name" data-direction="desc" onclick="selectPennySortDirection('name', 'desc')">
+                                        <i class="fas fa-sort-alpha-up"></i> Z to A
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="sort-group">
+                                <div class="sort-group-header">
+                                    <input type="radio" id="pennySortDate" name="pennySort" value="date">
+                                    <label for="pennySortDate">Collection Date</label>
+                                </div>
+                                <div class="sort-direction-buttons">
+                                    <button class="sort-direction-btn" data-sort="date" data-direction="desc" onclick="selectPennySortDirection('date', 'desc')">
+                                        <i class="fas fa-sort-amount-down"></i> Newest First
+                                    </button>
+                                    <button class="sort-direction-btn" data-sort="date" data-direction="asc" onclick="selectPennySortDirection('date', 'asc')">
+                                        <i class="fas fa-sort-amount-up"></i> Oldest First
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="sort-group">
+                                <div class="sort-group-header">
+                                    <input type="radio" id="pennySortLocation" name="pennySort" value="location">
+                                    <label for="pennySortLocation">Location</label>
+                                </div>
+                                <div class="sort-direction-buttons">
+                                    <button class="sort-direction-btn" data-sort="location" data-direction="asc" onclick="selectPennySortDirection('location', 'asc')">
+                                        <i class="fas fa-sort-alpha-down"></i> A to Z
+                                    </button>
+                                    <button class="sort-direction-btn" data-sort="location" data-direction="desc" onclick="selectPennySortDirection('location', 'desc')">
+                                        <i class="fas fa-sort-alpha-up"></i> Z to A
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="save-btn" onclick="closePennySortOptions()">Close</button>
+                    </div>
                     </div>
                 </div>
             </div>
@@ -670,6 +766,10 @@
                                     <input type="text" id="pennyLocation" required placeholder="Where did you collect this penny?">
                                 </div>
                                 <div class="form-group">
+                                    <label for="pennyLocationUrl">Location URL (optional):</label>
+                                    <input type="url" id="pennyLocationUrl" placeholder="https://maps.google.com/... or other map link">
+                                </div>
+                                <div class="form-group">
                                     <label for="pennyDescription">Description:</label>
                                     <div id="pennyDescription" class="rich-text-editor" contenteditable="true" data-placeholder="Describe the penny design and details..."></div>
                                 </div>
@@ -861,13 +961,14 @@
                          </button>
                      </div>
                      <div class="modal-body">
-                         <div class="guide-navigation">
-                             <button class="guide-nav-btn active" data-section="getting-started">Getting Started</button>
-                             <button class="guide-nav-btn" data-section="albums">Albums</button>
-                             <button class="guide-nav-btn" data-section="search-sort">Search & Sort</button>
-                             <button class="guide-nav-btn" data-section="pennies">Pennies</button>
-                             <button class="guide-nav-btn" data-section="features">Features</button>
-                         </div>
+                        <div class="guide-navigation">
+                            <button class="guide-nav-btn active" data-section="getting-started">Getting Started</button>
+                            <button class="guide-nav-btn" data-section="collection">Collection</button>
+                            <button class="guide-nav-btn" data-section="albums">Albums</button>
+                            <button class="guide-nav-btn" data-section="search-sort">Search & Sort</button>
+                            <button class="guide-nav-btn" data-section="pennies">Pennies</button>
+                            <button class="guide-nav-btn" data-section="features">Features</button>
+                        </div>
                          
                          <div class="guide-content">
                              <!-- Getting Started Section -->
@@ -884,13 +985,40 @@
                                  
                                  <h5>Navigation:</h5>
                                  <ul>
-                                     <li><strong>Header:</strong> Search bar, create album button, dark mode toggle, and menu</li>
+                                     <li><strong>Header:</strong> Search bar, create album button, and menu</li>
                                      <li><strong>Menu (⋮):</strong> Access to advanced features, settings, and help</li>
                                      <li><strong>Album Cards:</strong> Click to open full album view</li>
                                  </ul>
-                             </div>
-                             
-                             <!-- Albums Section -->
+                            </div>
+                            
+                            <!-- Collection Section -->
+                            <div class="guide-section" id="collection">
+                                <h4><i class="fas fa-folder-open"></i> Collection Overview</h4>
+                                
+                                <h5>Collection Nameplate:</h5>
+                                <ul>
+                                    <li><strong>Customization:</strong> Change your collection name from the menu under Collection Management</li>
+                                    <li><strong>Personal Touch:</strong> Give your collection a unique name that reflects your collecting journey</li>
+                                    <li><strong>Display:</strong> The collection name appears prominently at the top of your collection view</li>
+                                </ul>
+                                
+                                <h5>Collection Status Bar:</h5>
+                                <ul>
+                                    <li><strong>Statistics:</strong> Shows total albums, total pennies, and last backup time</li>
+                                    <li><strong>Sort Button:</strong> Access album sorting options to organize your collection</li>
+                                    <li><strong>Shared Albums Toggle:</strong> Hide or show imported shared albums in your collection</li>
+                                    <li><strong>Visual Indicators:</strong> Shared albums are marked with brown "Shared Album" badges</li>
+                                </ul>
+                                
+                                <h5>Collection Management:</h5>
+                                <ul>
+                                    <li><strong>Backup Status:</strong> Status bar shows when your collection was last backed up</li>
+                                    <li><strong>Import Options:</strong> Load full collections or merge shared albums into existing collection</li>
+                                    <li><strong>Export Options:</strong> Save entire collection or share individual albums</li>
+                                </ul>
+                            </div>
+                            
+                            <!-- Albums Section -->
                              <div class="guide-section" id="albums">
                                  <h4><i class="fas fa-book"></i> Managing Albums</h4>
                                  
@@ -905,35 +1033,38 @@
                                      <li><strong>Background Image:</strong> Add a cover image for visual appeal</li>
                                  </ul>
                                  
-                                 <h5>Album Actions:</h5>
-                                 <ul>
-                                     <li><strong>View:</strong> Click the album card to see all details and pennies</li>
-                                     <li><strong>Edit:</strong> Modify album information anytime</li>
-                                     <li><strong>Delete:</strong> Remove albums you no longer need</li>
-                                 </ul>
+                                <h5>Album Actions:</h5>
+                                <ul>
+                                    <li><strong>View:</strong> Click the album card to see all details and pennies</li>
+                                    <li><strong>Edit:</strong> Modify album information anytime</li>
+                                    <li><strong>Share:</strong> Export individual albums to share with others</li>
+                                    <li><strong>Delete:</strong> Remove albums you no longer need</li>
+                                </ul>
                              </div>
                              
                              <!-- Search & Sort Section -->
                              <div class="guide-section" id="search-sort">
                                  <h4><i class="fas fa-search"></i> Search & Organization</h4>
                                  
-                                 <h5>Search:</h5>
-                                 <ul>
-                                     <li><strong>Search Bar:</strong> Find albums by name, description, location, or penny details</li>
-                                     <li><strong>Categories:</strong> Search by album categories (e.g., "Theme Parks", "National Parks")</li>
-                                     <li><strong>Results:</strong> See highlighted matches and which fields contained your search term</li>
-                                     <li><strong>Matched Pennies:</strong> When opening an album from search results, matching pennies appear first in the grid</li>
-                                 </ul>
+                                <h5>Search:</h5>
+                                <ul>
+                                    <li><strong>Search Bar:</strong> Find albums by name, description, location, or penny details</li>
+                                    <li><strong>Categories:</strong> Search by album categories (e.g., "Theme Parks", "National Parks")</li>
+                                    <li><strong>Shared Albums:</strong> Search for "shared" to find all imported albums from other collections</li>
+                                    <li><strong>Results:</strong> See highlighted matches and which fields contained your search term</li>
+                                    <li><strong>Matched Pennies:</strong> When opening an album from search results, matching pennies appear first in the grid</li>
+                                </ul>
+                                
+                                <h5>Filtering:</h5>
+                                <ul>
+                                    <li><strong>Shared Albums Toggle:</strong> Use "Hide Shared" / "Show Shared" button to filter imported albums</li>
+                                </ul>
                                  
-                                 <h5>Sorting:</h5>
-                                 <ul>
-                                     <li><strong>Date Created:</strong> Newest or oldest albums first</li>
-                                     <li><strong>Trip Date:</strong> Most recent or oldest trips first</li>
-                                     <li><strong>Album Name:</strong> Alphabetical order (A-Z or Z-A)</li>
-                                     <li><strong>Location:</strong> Alphabetical by location</li>
-                                     <li><strong>Penny Count:</strong> Most or least pennies first</li>
-                                     <li><strong>Last Modified:</strong> Recently updated albums first</li>
-                                 </ul>
+                                <h5>Sorting:</h5>
+                                <ul>
+                                    <li><strong>Album Sorting:</strong> Sort albums in the collection view by various criteria</li>
+                                    <li><strong>Penny Sorting:</strong> Sort pennies within individual albums by name, date, or location</li>
+                                </ul>
                                  
                                  <p><strong>Tip:</strong> Your sort preference is saved and applied automatically!</p>
                              </div>
@@ -950,52 +1081,52 @@
                                      <li><strong>Flexible Workflow:</strong> Choose between AI assistance or manual entry based on your preference</li>
                                  </ul>
                                  
-                                 <h5>Penny Information:</h5>
-                                 <ul>
-                                     <li><strong>Name/Title:</strong> What the penny commemorates</li>
-                                     <li><strong>Location:</strong> Where you collected it</li>
-                                     <li><strong>Description:</strong> Details about the penny design</li>
-                                     <li><strong>Date Collected:</strong> When you got the penny</li>
-                                     <li><strong>Personal Notes:</strong> Your memories or observations</li>
-                                 </ul>
+                                <h5>Penny Information:</h5>
+                                <ul>
+                                    <li><strong>Name/Title:</strong> What the penny commemorates</li>
+                                    <li><strong>Location:</strong> Where you collected it</li>
+                                    <li><strong>Location URL:</strong> Optional map link - makes location clickable on penny cards</li>
+                                    <li><strong>Description:</strong> Details about the penny design</li>
+                                    <li><strong>Date Collected:</strong> When you got the penny</li>
+                                    <li><strong>Personal Notes:</strong> Your memories or observations</li>
+                                </ul>
                                  
-                                 <h5>Penny Actions:</h5>
-                                 <ul>
-                                     <li><strong>View:</strong> Click penny images to see full details</li>
-                                     <li><strong>Edit:</strong> Modify penny information anytime</li>
-                                     <li><strong>Delete:</strong> Remove pennies from albums</li>
-                                 </ul>
+                                <h5>Penny Actions:</h5>
+                                <ul>
+                                    <li><strong>View:</strong> Click penny images to see full details</li>
+                                    <li><strong>Edit:</strong> Modify penny information anytime</li>
+                                    <li><strong>Move:</strong> Transfer pennies to other albums</li>
+                                    <li><strong>Delete:</strong> Remove pennies from albums</li>
+                                </ul>
                              </div>
                              
                              <!-- Features Section -->
                              <div class="guide-section" id="features">
                                  <h4><i class="fas fa-star"></i> App Features</h4>
                                  
-                                 <h5>Dark Mode:</h5>
-                                 <p>Toggle between light and dark themes using the moon icon in the header.</p>
+                                <h5>Data Management:</h5>
+                                <ul>
+                                    <li><strong>Export Backup:</strong> Download your collection as a JSON file</li>
+                                    <li><strong>Import Backup:</strong> Restore your collection (or a shared collection) from a backup file</li>
+                                    <li><strong>Import Shared Albums:</strong> Add shared albums to your existing collection without replacing it</li>
+                                    <li><strong>Local Storage:</strong> All data is saved locally in your browser</li>
+                                </ul>
                                  
-                                 <h5>Data Management:</h5>
-                                 <ul>
-                                     <li><strong>Export Backup:</strong> Download your collection as a JSON file</li>
-                                     <li><strong>Import Backup:</strong> Restore your collection from a backup file</li>
-                                     <li><strong>Local Storage:</strong> All data is saved locally in your browser</li>
-                                 </ul>
+                                <h5>Menu Features:</h5>
+                                <ul>
+                                    <li><strong>Collection Management:</strong> Backup and restore your data</li>
+                                    <li><strong>App Settings:</strong> Configure AI and display preferences</li>
+                                    <li><strong>Help & Info:</strong> Access this guide and app information</li>
+                                </ul>
                                  
-                                 <h5>Menu Features:</h5>
-                                 <ul>
-                                     <li><strong>Collection Management:</strong> Backup and restore your data</li>
-                                     <li><strong>Search & Sort:</strong> Advanced search and sorting options</li>
-                                     <li><strong>App Settings:</strong> Configure AI and display preferences</li>
-                                     <li><strong>Help & Info:</strong> Access this guide and app information</li>
-                                 </ul>
-                                 
-                                 <h5>Tips:</h5>
-                                 <ul>
-                                     <li>Use categories to organize related albums (e.g., "Theme Parks" + "Family Vacations")</li>
-                                     <li>Add location URLs to make album cards clickable for maps</li>
-                                     <li>Search works across all album and penny fields</li>
-                                     <li>Your preferences (dark mode, sort order) are automatically saved</li>
-                                 </ul>
+                                <h5>Tips:</h5>
+                                <ul>
+                                    <li>Use categories to organize related albums (e.g., "Theme Parks" + "Family Vacations")</li>
+                                    <li>Add location URLs to make album cards clickable for maps</li>
+                                    <li>Add location URLs to individual pennies for quick access to maps - perfect for misc albums</li>
+                                    <li>Search works across all album and penny fields</li>
+                                    <li>Your preferences (dark mode, sort order) are automatically saved</li>
+                                </ul>
                              </div>
                          </div>
                      </div>

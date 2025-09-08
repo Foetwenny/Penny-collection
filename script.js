@@ -170,6 +170,9 @@ function formatDateForDisplay(dateValue) {
 // Collection name
 let collectionName = localStorage.getItem('collectionName') || 'Your Albums';
 
+// Shared albums visibility state
+let showSharedAlbums = true; // Default: show shared albums
+
 // Dark mode state
 let isDarkMode = localStorage.getItem('darkMode') === 'true';
 
@@ -583,7 +586,10 @@ function renderFilteredAlbums(filteredAlbums) {
 }
 
 function renderAlbums() {
-    if (albums.length === 0) {
+    // Filter albums based on shared albums toggle
+    const filteredAlbums = showSharedAlbums ? albums : albums.filter(album => !album.isShared);
+    
+    if (filteredAlbums.length === 0) {
         albumsGrid.style.display = 'none';
         emptyAlbumsState.style.display = 'block';
         // Hide sort indicator when no albums
@@ -603,7 +609,7 @@ function renderAlbums() {
         sortIndicator.style.display = 'flex';
     }
     
-    albumsGrid.innerHTML = albums.map(album => {
+    albumsGrid.innerHTML = filteredAlbums.map(album => {
         const hasCover = album.imageUrl && album.imageUrl.length > 0;
         // Add cache-busting for non-base64 URLs
         const imageUrlWithCacheBust = hasCover ? 
@@ -723,7 +729,10 @@ function trackLastBackupTime() {
 }
 
 function renderAlbumsWithSearchHighlights(filteredAlbums) {
-    if (filteredAlbums.length === 0) {
+    // Apply shared albums filter to search results
+    const sharedFilteredAlbums = showSharedAlbums ? filteredAlbums : filteredAlbums.filter(album => !album.isShared);
+    
+    if (sharedFilteredAlbums.length === 0) {
         albumsGrid.style.display = 'none';
         emptyAlbumsState.style.display = 'block';
         // Hide sort indicator when no albums
@@ -743,7 +752,7 @@ function renderAlbumsWithSearchHighlights(filteredAlbums) {
         sortIndicator.style.display = 'flex';
     }
     
-    albumsGrid.innerHTML = filteredAlbums.map(album => {
+    albumsGrid.innerHTML = sharedFilteredAlbums.map(album => {
         const hasCover = album.imageUrl && album.imageUrl.length > 0;
         // Add cache-busting for non-base64 URLs
         const imageUrlWithCacheBust = hasCover ? 
@@ -822,6 +831,37 @@ function clearSearch() {
     // Show all albums with current sort
     const currentSort = getCurrentSortSettings();
     sortAlbums(currentSort.field, currentSort.direction);
+}
+
+function toggleSharedAlbums() {
+    showSharedAlbums = !showSharedAlbums;
+    
+    // Update button text
+    const toggleBtn = document.getElementById('toggleSharedBtn');
+    if (toggleBtn) {
+        const icon = toggleBtn.querySelector('i');
+        const textSpan = toggleBtn.querySelector('span') || toggleBtn.childNodes[1];
+        
+        if (showSharedAlbums) {
+            toggleBtn.innerHTML = '<i class="fas fa-share-alt"></i> Hide Shared';
+        } else {
+            toggleBtn.innerHTML = '<i class="fas fa-share-alt"></i> Show Shared';
+        }
+    }
+    
+    // Re-render albums (respects current search state)
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput && searchInput.value.trim()) {
+        // If there's an active search, re-run the search
+        performSearch();
+    } else {
+        // Otherwise, just re-render with current sort
+        const currentSort = getCurrentSortSettings();
+        sortAlbums(currentSort.field, currentSort.direction);
+    }
+    
+    // Play sound feedback
+    playSound('menuClick');
 }
 
 function populateCategoryCheckboxes(containerSelector, selectedCategories) {
@@ -1675,6 +1715,7 @@ function saveEdit() {
         // Update penny data
         penny.name = document.getElementById('editName').value;
         penny.location = document.getElementById('editLocation').value;
+        penny.locationUrl = document.getElementById('editLocationUrl').value.trim() || '';
         penny.description = getRichTextContent('editDescription');
         penny.dateCollected = document.getElementById('editDate').value;
         penny.notes = document.getElementById('editNotes').value;
@@ -2123,12 +2164,15 @@ function renderAlbumPenniesWithSearchHighlights() {
             <img src="${imageSrc}" alt="${penny.name}" class="penny-image" onclick="openPennyViewFromElement(this.parentElement)" onerror="console.log('Image failed to load for penny (search):', '${penny.name}')">
             <div class="penny-info">
                 <h4>${highlightedName}</h4>
-                <p class="location">${highlightedLocation}</p>
+                <p class="location">${penny.locationUrl ? `<a href="${penny.locationUrl}" target="_blank" rel="noopener noreferrer">${highlightedLocation}</a>` : highlightedLocation}</p>
                 <p class="date">${formatDateForDisplay(penny.dateCollected)}</p>
             </div>
             <div class="penny-actions">
                 <button class="penny-action-btn edit-btn" onclick="editPennyInAlbum('${penny.id}')">
                     <i class="fas fa-edit"></i>
+                </button>
+                <button class="penny-action-btn move-btn" onclick="movePennyToAlbum('${penny.id}')" title="Move to another album">
+                    <i class="fas fa-arrow-right"></i>
                 </button>
                 <button class="penny-action-btn delete-btn" onclick="deletePennyFromAlbum('${penny.id}')">
                     <i class="fas fa-trash"></i>
@@ -2153,12 +2197,15 @@ function renderAlbumPenniesNormal() {
             <img src="${imageSrc}" alt="${penny.name}" class="penny-image" onclick="openPennyViewFromElement(this.parentElement)" onerror="console.log('Image failed to load for penny:', '${penny.name}')">
             <div class="penny-info">
                 <h4>${penny.name}</h4>
-                <p class="location">${penny.location}</p>
+                <p class="location">${penny.locationUrl ? `<a href="${penny.locationUrl}" target="_blank" rel="noopener noreferrer">${penny.location}</a>` : penny.location}</p>
                 <p class="date">${formatDateForDisplay(penny.dateCollected)}</p>
             </div>
             <div class="penny-actions">
                 <button class="penny-action-btn edit-btn" onclick="editPennyInAlbum('${penny.id}')">
                     <i class="fas fa-edit"></i>
+                </button>
+                <button class="penny-action-btn move-btn" onclick="movePennyToAlbum('${penny.id}')" title="Move to another album">
+                    <i class="fas fa-arrow-right"></i>
                 </button>
                 <button class="penny-action-btn delete-btn" onclick="deletePennyFromAlbum('${penny.id}')">
                     <i class="fas fa-trash"></i>
@@ -2246,12 +2293,14 @@ function closeAddPennyModal() {
     // Clear manual entry form fields
     const pennyName = document.getElementById('pennyName');
     const pennyLocation = document.getElementById('pennyLocation');
+    const pennyLocationUrl = document.getElementById('pennyLocationUrl');
     const pennyDescription = document.getElementById('pennyDescription');
     const pennyDate = document.getElementById('pennyDate');
     const pennyNotes = document.getElementById('pennyNotes');
     
     if (pennyName) pennyName.value = '';
     if (pennyLocation) pennyLocation.value = '';
+    if (pennyLocationUrl) pennyLocationUrl.value = '';
     clearRichTextContent('pennyDescription');
     if (pennyDate) pennyDate.value = '';
     if (pennyNotes) pennyNotes.value = '';
@@ -2289,6 +2338,7 @@ function saveManualPenny() {
         id: Date.now().toString(),
         name: name,
         location: location,
+        locationUrl: document.getElementById('pennyLocationUrl').value.trim() || '',
         description: description,
         dateCollected: document.getElementById('pennyDate').value || new Date().toISOString().split('T')[0],
         notes: document.getElementById('pennyNotes').value.trim() || '',
@@ -2499,6 +2549,7 @@ function editPennyInAlbum(pennyId) {
     // Populate edit form
     document.getElementById('editName').value = penny.name;
     document.getElementById('editLocation').value = penny.location;
+    document.getElementById('editLocationUrl').value = penny.locationUrl || '';
     setRichTextContent('editDescription', penny.description);
     
     // Fix date handling to prevent timezone issues
@@ -2544,6 +2595,210 @@ function deletePennyFromAlbum(pennyId) {
     }
 }
 
+// Move penny to another album
+function movePennyToAlbum(pennyId) {
+    const penny = currentAlbum.pennies.find(p => p.id === pennyId);
+    if (!penny) {
+        showNotification('Penny not found!', 'error');
+        return;
+    }
+    
+    // Store the penny ID for the move operation
+    window.currentMovingPennyId = pennyId;
+    
+    // Populate modal info
+    document.getElementById('movePennyName').textContent = penny.name;
+    document.getElementById('moveFromAlbum').textContent = currentAlbum.name;
+    
+    // Populate album list (exclude current album)
+    const albumList = document.getElementById('moveAlbumList');
+    albumList.innerHTML = '';
+    
+    albums.forEach(album => {
+        if (album.id !== currentAlbum.id) {
+            const albumOption = document.createElement('div');
+            albumOption.className = 'album-option';
+            albumOption.dataset.albumId = album.id;
+            albumOption.innerHTML = `
+                <input type="radio" name="moveAlbum" value="${album.id}" id="move-${album.id}">
+                <label for="move-${album.id}" class="album-info">
+                    <div class="album-name">${album.name}</div>
+                    <div class="album-count">${album.pennies.length} ${album.pennies.length === 1 ? 'penny' : 'pennies'}</div>
+                </label>
+            `;
+            
+            albumOption.addEventListener('click', function() {
+                // Remove previous selection
+                document.querySelectorAll('.album-option').forEach(opt => opt.classList.remove('selected'));
+                // Add selection to clicked option
+                this.classList.add('selected');
+                // Enable move button
+                document.getElementById('movePennyBtn').disabled = false;
+            });
+            
+            albumList.appendChild(albumOption);
+        }
+    });
+    
+    // Show modal
+    document.getElementById('movePennyModal').style.display = 'block';
+    
+    // Play sound
+    playSound('menuClick');
+}
+
+// Confirm move penny
+function confirmMovePenny() {
+    const selectedAlbum = document.querySelector('.album-option.selected');
+    if (!selectedAlbum || !window.currentMovingPennyId) {
+        showNotification('Please select a destination album!', 'error');
+        return;
+    }
+    
+    const pennyId = window.currentMovingPennyId;
+    const destinationAlbumId = selectedAlbum.dataset.albumId;
+    
+    // Find the penny and destination album
+    const penny = currentAlbum.pennies.find(p => p.id === pennyId);
+    const destinationAlbum = albums.find(a => a.id === destinationAlbumId);
+    
+    if (!penny || !destinationAlbum) {
+        showNotification('Error: Penny or album not found!', 'error');
+        return;
+    }
+    
+    // Move penny to destination album
+    destinationAlbum.pennies.push(penny);
+    destinationAlbum.updatedAt = new Date().toISOString();
+    
+    // Remove penny from current album
+    const index = currentAlbum.pennies.findIndex(p => p.id === pennyId);
+    if (index > -1) {
+        currentAlbum.pennies.splice(index, 1);
+        currentAlbum.updatedAt = new Date().toISOString();
+    }
+    
+    // Save changes
+    saveAlbumsToStorage();
+    
+    // Update displays
+    renderAlbums();
+    renderAlbumPennies();
+    
+    // Close modal
+    closeMovePennyModal();
+    
+    // Play success sound
+    playSound('successChime');
+    
+    // Show success notification
+    showNotification(`Penny moved to "${destinationAlbum.name}" successfully!`, 'success');
+}
+
+// Close move penny modal
+function closeMovePennyModal() {
+    document.getElementById('movePennyModal').style.display = 'none';
+    window.currentMovingPennyId = null;
+    document.getElementById('movePennyBtn').disabled = true;
+    // Clear any selected album options
+    document.querySelectorAll('.album-option').forEach(opt => opt.classList.remove('selected'));
+}
+
+// Penny sorting functionality
+function openPennySortOptions() {
+    // Show the penny sort modal
+    document.getElementById('pennySortOptionsModal').style.display = 'block';
+    
+    // Play sound
+    playSound('menuClick');
+}
+
+function closePennySortOptions() {
+    // Hide the penny sort modal
+    document.getElementById('pennySortOptionsModal').style.display = 'none';
+}
+
+function selectPennySortDirection(sortField, direction) {
+    // First, select the radio button for this sort field
+    const radioButton = document.querySelector(`input[name="pennySort"][value="${sortField}"]`);
+    if (radioButton) {
+        radioButton.checked = true;
+    }
+    
+    // Remove active class from all direction buttons
+    document.querySelectorAll('.sort-direction-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Add active class to the clicked button
+    const clickedButton = document.querySelector(`[data-sort="${sortField}"][data-direction="${direction}"]`);
+    if (clickedButton) {
+        clickedButton.classList.add('active');
+    }
+    
+    // Apply the sort immediately
+    sortPenniesInAlbum(sortField, direction);
+    
+    // Close the modal immediately after sorting
+    closePennySortOptions();
+    
+    // Play sound
+    playSound('successChime');
+    
+    // Show success notification
+    showNotification('Pennies sorted successfully!', 'success');
+}
+
+function applyPennySort() {
+    // This function is no longer needed since sorting happens immediately
+    // when direction buttons are clicked
+    closePennySortOptions();
+}
+
+function sortPenniesInAlbum(field, direction) {
+    if (!currentAlbum || !currentAlbum.pennies) {
+        return;
+    }
+    
+    // Create a copy of the pennies array to sort
+    const penniesCopy = [...currentAlbum.pennies];
+    
+    // Sort the pennies
+    penniesCopy.sort((a, b) => {
+        let aValue, bValue;
+        
+        if (field === 'name') {
+            aValue = a.name ? a.name.toLowerCase() : '';
+            bValue = b.name ? b.name.toLowerCase() : '';
+        } else if (field === 'date') {
+            aValue = new Date(a.dateCollected || '1900-01-01');
+            bValue = new Date(b.dateCollected || '1900-01-01');
+        } else if (field === 'location') {
+            aValue = a.location ? a.location.toLowerCase() : '';
+            bValue = b.location ? b.location.toLowerCase() : '';
+        }
+        
+        if (direction === 'asc') {
+            if (aValue < bValue) return -1;
+            if (aValue > bValue) return 1;
+            return 0;
+        } else {
+            if (aValue > bValue) return -1;
+            if (aValue < bValue) return 1;
+            return 0;
+        }
+    });
+    
+    // Update the current album's pennies array
+    currentAlbum.pennies = penniesCopy;
+    currentAlbum.updatedAt = new Date().toISOString();
+    
+    // Save to storage
+    saveAlbumsToStorage();
+    
+    // Re-render the pennies display
+    renderAlbumPennies();
+}
 
 // Save albums to IndexedDB (replaces localStorage)
 async function saveAlbumsToStorage() {
@@ -2996,6 +3251,10 @@ window.addEventListener('click', function(event) {
     if (sortOptionsModal && sortOptionsModal.contains(event.target)) return;
     const collectionSettingsModal = document.getElementById('collectionSettingsModal');
     if (collectionSettingsModal && collectionSettingsModal.contains(event.target)) return;
+    const movePennyModal = document.getElementById('movePennyModal');
+    if (movePennyModal && movePennyModal.contains(event.target)) return;
+    const pennySortOptionsModal = document.getElementById('pennySortOptionsModal');
+    if (pennySortOptionsModal && pennySortOptionsModal.contains(event.target)) return;
     
     // Close modals when clicking on the modal backdrop (the modal itself, not its content)
     if (event.target === createAlbumModal) {
@@ -3015,6 +3274,12 @@ window.addEventListener('click', function(event) {
     }
     if (event.target.id === 'shareModal') {
         closeShareModal();
+    }
+    if (event.target.id === 'movePennyModal') {
+        closeMovePennyModal();
+    }
+    if (event.target.id === 'pennySortOptionsModal') {
+        closePennySortOptions();
     }
     if (event.target.id === 'aboutModal') {
         closeAboutModal();
