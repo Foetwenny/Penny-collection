@@ -2605,6 +2605,59 @@ body {
     overflow-y: auto;
 }
 
+/* Penny Navigation Controls */
+.penny-nav-controls {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.penny-nav-btn {
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 6px;
+    background: rgba(139, 69, 19, 0.15);
+    color: #8B4513;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(139, 69, 19, 0.1);
+    border: 1px solid rgba(139, 69, 19, 0.3);
+}
+
+.penny-nav-btn:hover {
+    background: rgba(139, 69, 19, 0.25);
+    color: #654321;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(139, 69, 19, 0.2);
+    border-color: rgba(139, 69, 19, 0.4);
+}
+
+.penny-nav-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(139, 69, 19, 0.1);
+    background: rgba(139, 69, 19, 0.3);
+    color: #654321;
+}
+
+.penny-nav-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.penny-nav-btn:disabled:hover {
+    background: rgba(139, 69, 19, 0.15);
+    color: #8B4513;
+    transform: none;
+    box-shadow: 0 2px 4px rgba(139, 69, 19, 0.1);
+    border-color: rgba(139, 69, 19, 0.3);
+}
+
 .penny-view-image {
     text-align: center;
     margin-bottom: 20px;
@@ -2956,6 +3009,17 @@ body {
     
     .guide-content {
         max-height: 50vh;
+    }
+    
+    /* Penny navigation mobile adjustments */
+    .penny-nav-controls {
+        gap: 4px;
+    }
+    
+    .penny-nav-btn {
+        width: 28px;
+        height: 28px;
+        font-size: 0.8rem;
     }
 }
 

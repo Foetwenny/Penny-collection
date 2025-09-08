@@ -815,6 +815,14 @@
             <div class="modal" id="pennyViewModal">
                 <div class="modal-content penny-view-content">
                     <div class="modal-header">
+                        <div class="penny-nav-controls">
+                            <button class="penny-nav-btn prev-btn" onclick="navigateToPreviousPenny()" title="Previous Penny">
+                                <i class="fas fa-chevron-left"></i>
+                            </button>
+                            <button class="penny-nav-btn next-btn" onclick="navigateToNextPenny()" title="Next Penny">
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </div>
                         <h3 id="pennyViewTitle">Penny Details</h3>
                         <button class="close-btn" onclick="closePennyViewModal()">
                             <i class="fas fa-times"></i>

@@ -5,6 +5,8 @@ let currentAlbum = null;
 let currentImageData = null;
 let currentAnalysis = null;
 let isSharedView = false; // Track if we're viewing a shared album
+let currentPennyIndex = -1; // Track current penny index for navigation
+let currentPennySearchTerm = ''; // Track search term for navigation context
 
 // IndexedDB Configuration
 const DB_NAME = 'PennyCollectionDB';
@@ -1854,6 +1856,18 @@ document.addEventListener('keydown', function(event) {
         closeVersionInfoModal();
         closeDisplayPreferencesModal();
     }
+    
+    // Penny navigation keyboard shortcuts (only when penny view modal is open)
+    const pennyViewModal = document.getElementById('pennyViewModal');
+    if (pennyViewModal && pennyViewModal.style.display === 'block') {
+        if (event.key === 'ArrowLeft') {
+            event.preventDefault();
+            navigateToPreviousPenny();
+        } else if (event.key === 'ArrowRight') {
+            event.preventDefault();
+            navigateToNextPenny();
+        }
+    }
 });
 
 // Modal functions (closeModal is defined earlier)
@@ -2376,6 +2390,10 @@ function openPennyView(pennyId, searchTerm = '') {
     const penny = currentAlbum.pennies.find(p => p.id === pennyId);
     if (!penny) return;
     
+    // Track current penny index and search term for navigation
+    currentPennyIndex = currentAlbum.pennies.findIndex(p => p.id === pennyId);
+    currentPennySearchTerm = searchTerm;
+    
     // Apply search highlighting if there's a search term
     const highlightedName = searchTerm ? highlightSearchTerm(penny.name, searchTerm) : penny.name;
     const highlightedLocation = searchTerm ? highlightSearchTerm(penny.location, searchTerm) : penny.location;
@@ -2405,10 +2423,54 @@ function openPennyView(pennyId, searchTerm = '') {
     }
     
     document.getElementById('pennyViewModal').style.display = 'block';
+    
+    // Update navigation button states
+    updatePennyNavigationButtons();
 }
 
 function closePennyViewModal() {
     document.getElementById('pennyViewModal').style.display = 'none';
+    // Reset navigation state
+    currentPennyIndex = -1;
+    currentPennySearchTerm = '';
+}
+
+// Penny Navigation Functions
+function navigateToPreviousPenny() {
+    if (currentPennyIndex <= 0 || !currentAlbum || !currentAlbum.pennies) return;
+    
+    const prevIndex = currentPennyIndex - 1;
+    const prevPenny = currentAlbum.pennies[prevIndex];
+    if (prevPenny) {
+        openPennyView(prevPenny.id, currentPennySearchTerm);
+        // Play navigation sound
+        playSound('menuClick');
+    }
+}
+
+function navigateToNextPenny() {
+    if (!currentAlbum || !currentAlbum.pennies || currentPennyIndex >= currentAlbum.pennies.length - 1) return;
+    
+    const nextIndex = currentPennyIndex + 1;
+    const nextPenny = currentAlbum.pennies[nextIndex];
+    if (nextPenny) {
+        openPennyView(nextPenny.id, currentPennySearchTerm);
+        // Play navigation sound
+        playSound('menuClick');
+    }
+}
+
+function updatePennyNavigationButtons() {
+    const prevBtn = document.querySelector('.penny-nav-btn.prev-btn');
+    const nextBtn = document.querySelector('.penny-nav-btn.next-btn');
+    
+    if (!prevBtn || !nextBtn || !currentAlbum || !currentAlbum.pennies) return;
+    
+    // Enable/disable previous button
+    prevBtn.disabled = currentPennyIndex <= 0;
+    
+    // Enable/disable next button
+    nextBtn.disabled = currentPennyIndex >= currentAlbum.pennies.length - 1;
 }
 
 function saveAlbumEdit() {
