@@ -2677,7 +2677,7 @@ function openPennyViewFromElement(pennyElement) {
     openPennyView(pennyId, searchTerm);
 }
 
-function openPennyView(pennyId, searchTerm = '') {
+function openPennyView(pennyId, searchTerm = '', skipIndexUpdate = false) {
     const penny = currentAlbum.pennies.find(p => p.id === pennyId);
     if (!penny) {
         console.error('Penny not found:', pennyId, 'in album:', currentAlbum.name);
@@ -2685,11 +2685,13 @@ function openPennyView(pennyId, searchTerm = '') {
     }
     
     // Track current penny index and search term for navigation
-    // Use display order if available, otherwise fall back to original order
-    if (currentDisplayOrder.length > 0) {
-        currentPennyIndex = currentDisplayOrder.indexOf(pennyId);
-    } else {
-        currentPennyIndex = currentAlbum.pennies.findIndex(p => p.id === pennyId);
+    // Only recalculate index if not explicitly skipped (for navigation)
+    if (!skipIndexUpdate) {
+        if (currentDisplayOrder.length > 0) {
+            currentPennyIndex = currentDisplayOrder.indexOf(pennyId);
+        } else {
+            currentPennyIndex = currentAlbum.pennies.findIndex(p => p.id === pennyId);
+        }
     }
     currentPennySearchTerm = searchTerm;
     
@@ -2851,7 +2853,9 @@ function navigateToPreviousPenny() {
     const prevPennyId = currentDisplayOrder[prevIndex];
     const prevPenny = currentAlbum.pennies.find(p => p.id === prevPennyId);
     if (prevPenny) {
-        openPennyView(prevPenny.id, currentPennySearchTerm);
+        // Update index before opening to prevent recalculation issues
+        currentPennyIndex = prevIndex;
+        openPennyView(prevPenny.id, currentPennySearchTerm, true);
         // Play navigation sound
         playSound('menuClick');
     }
@@ -2864,7 +2868,9 @@ function navigateToNextPenny() {
     const nextPennyId = currentDisplayOrder[nextIndex];
     const nextPenny = currentAlbum.pennies.find(p => p.id === nextPennyId);
     if (nextPenny) {
-        openPennyView(nextPenny.id, currentPennySearchTerm);
+        // Update index before opening to prevent recalculation issues
+        currentPennyIndex = nextIndex;
+        openPennyView(nextPenny.id, currentPennySearchTerm, true);
         // Play navigation sound
         playSound('menuClick');
     }
