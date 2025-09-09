@@ -1,5 +1,6 @@
 // AI Configuration Functions
 function openAIConfig() {
+    closeMenu(); // Close the menu when opening AI config
     // Create a simple modal for AI configuration
     const modal = document.createElement('div');
     modal.className = 'modal';

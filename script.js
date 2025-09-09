@@ -726,6 +726,18 @@ function toggleMenu() {
         console.log('=== toggleMenu function completed ===');
 }
 
+// Close menu function
+function closeMenu() {
+    const menuToggle = document.getElementById('menuToggle');
+    if (!menuToggle) return;
+    
+    const menuContainer = menuToggle.closest('.menu-dropdown');
+    if (menuContainer && menuContainer.classList.contains('active')) {
+        menuContainer.classList.remove('active');
+        menuToggle.classList.remove('active');
+    }
+}
+
 // Menu event listener will be set up in initializeEventListeners
 
 // Search functionality
@@ -1381,6 +1393,7 @@ function initializeSortEventListeners() {
 
 
 function openAbout() {
+    closeMenu(); // Close the menu when opening about
     const aboutModal = document.getElementById('aboutModal');
     if (aboutModal) {
         aboutModal.style.display = 'block';
@@ -2715,6 +2728,9 @@ function openPennyView(pennyId, searchTerm = '') {
     // Prevent background scrolling when modal is open
     document.body.style.overflow = 'hidden';
     
+    // Add touch event handlers for swipe navigation
+    addPennyViewTouchHandlers();
+    
     // Reset zoom and pan for new penny
     pennyZoomLevel = 1;
     pennyPanX = 0;
@@ -2740,6 +2756,9 @@ function closePennyViewModal() {
     
     // Restore background scrolling when modal is closed
     document.body.style.overflow = '';
+    
+    // Remove touch event handlers
+    removePennyViewTouchHandlers();
     
     // Remove all mouse event listeners
     const pennyImage = document.getElementById('pennyViewImage');
@@ -2848,6 +2867,73 @@ function navigateToNextPenny() {
         openPennyView(nextPenny.id, currentPennySearchTerm);
         // Play navigation sound
         playSound('menuClick');
+    }
+}
+
+// Touch event handlers for swipe navigation
+let touchStartX = 0;
+let touchStartY = 0;
+let touchEndX = 0;
+let touchEndY = 0;
+let pennyViewTouchHandlers = [];
+
+function addPennyViewTouchHandlers() {
+    const pennyViewModal = document.getElementById('pennyViewModal');
+    if (!pennyViewModal) return;
+    
+    // Touch start handler
+    const touchStartHandler = (e) => {
+        if (e.touches.length === 1) {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        }
+    };
+    
+    // Touch end handler
+    const touchEndHandler = (e) => {
+        if (e.changedTouches.length === 1) {
+            touchEndX = e.changedTouches[0].clientX;
+            touchEndY = e.changedTouches[0].clientY;
+            handleSwipeGesture();
+        }
+    };
+    
+    // Store handlers for removal
+    pennyViewTouchHandlers = [
+        { element: pennyViewModal, event: 'touchstart', handler: touchStartHandler },
+        { element: pennyViewModal, event: 'touchend', handler: touchEndHandler }
+    ];
+    
+    // Add event listeners
+    pennyViewTouchHandlers.forEach(({ element, event, handler }) => {
+        element.addEventListener(event, handler, { passive: true });
+    });
+}
+
+function removePennyViewTouchHandlers() {
+    // Remove all touch event listeners
+    pennyViewTouchHandlers.forEach(({ element, event, handler }) => {
+        element.removeEventListener(event, handler);
+    });
+    pennyViewTouchHandlers = [];
+}
+
+function handleSwipeGesture() {
+    const minSwipeDistance = 50; // Minimum distance for a swipe
+    const maxVerticalDistance = 100; // Maximum vertical movement to still count as horizontal swipe
+    
+    const deltaX = touchEndX - touchStartX;
+    const deltaY = Math.abs(touchEndY - touchStartY);
+    
+    // Check if it's a horizontal swipe (not too much vertical movement)
+    if (Math.abs(deltaX) >= minSwipeDistance && deltaY <= maxVerticalDistance) {
+        if (deltaX > 0) {
+            // Swipe right - go to previous penny
+            navigateToPreviousPenny();
+        } else {
+            // Swipe left - go to next penny
+            navigateToNextPenny();
+        }
     }
 }
 
@@ -3337,6 +3423,7 @@ function showEmptyAlbumsStateIfNeeded() {
 
 // Save Collection As function to prevent data loss
 async function saveCollectionAs() {
+    closeMenu(); // Close the menu when opening save dialog
     // Prompt user for custom filename - use collection name as default
     const collectionNameForFile = collectionName.replace(/[<>:"/\\|?*]/g, '_').trim() || 'penny-collection';
     const defaultName = `${collectionNameForFile}-backup-${new Date().toISOString().split('T')[0]}`;
@@ -3392,6 +3479,7 @@ async function saveCollectionAs() {
 
 // Load Collection function to restore data with fail-safes
 async function loadCollection() {
+    closeMenu(); // Close the menu when opening load dialog
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.json';
@@ -3584,6 +3672,7 @@ async function shareAlbum(albumId) {
 
 // Import shared album function - adds to existing collection
 function importSharedAlbum() {
+    closeMenu(); // Close the menu when opening import dialog
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.json';
@@ -3655,6 +3744,7 @@ function importSharedAlbum() {
 
 // Create new collection function
 function createNewCollection() {
+    closeMenu(); // Close the menu when opening new collection dialog
     const warningMessage = `⚠️ NEW COLLECTION WARNING ⚠️
 
 This will clear your current collection:
@@ -3843,6 +3933,7 @@ function openFilterSettings() {
 // openAIConfig function is now defined in ai-config.js
 
 function openDisplayPreferences() {
+    closeMenu(); // Close the menu when opening display preferences
     const displayPreferencesModal = document.getElementById('displayPreferencesModal');
     if (displayPreferencesModal) {
         displayPreferencesModal.style.display = 'block';
@@ -3956,7 +4047,8 @@ function updateMapMarkers() {
             locationMap.set(album.locationUrl, {
                 album: album,
                 locationName: album.location || album.name,
-                locationSource: 'album'
+                locationSource: 'album',
+                penny: null // No penny data for album-level locations
             });
         }
         // PENNY-LEVEL FALLBACK: If no album locationUrl, check pennies
@@ -3970,7 +4062,8 @@ function updateMapMarkers() {
                         locationMap.set(penny.locationUrl, {
                             album: album,
                             locationName: penny.location || penny.name,
-                            locationSource: 'penny'
+                            locationSource: 'penny',
+                            penny: penny // Store the penny data for date information
                         });
                     }
                 }
@@ -4000,7 +4093,7 @@ function updateMapMarkers() {
         if (geocodedLocations.has(locationKey)) {
             const coords = geocodedLocations.get(locationKey);
             console.log('DEBUG - Using cached coordinates for:', locationKey, coords);
-            addMarkerToMap(coords, data.album, data.locationName);
+            addMarkerToMap(coords, data.album, data.locationName, data.locationSource, data.penny);
             cachedCount++;
         } else {
             // Schedule geocoding for non-cached locations
@@ -4009,7 +4102,7 @@ function updateMapMarkers() {
             newGeocodingPromises.push(
                 new Promise(resolve => {
                     setTimeout(() => {
-                        geocodeLocation(locationKey, data.album, data.locationName, data.locationSource)
+                        geocodeLocation(locationKey, data.album, data.locationName, data.locationSource, data.penny)
                             .then(resolve)
                             .catch(resolve);
                     }, delay);
@@ -4045,7 +4138,7 @@ function updateMapMarkers() {
     }
 }
 
-async function geocodeLocation(locationKey, album, locationName, locationSource) {
+async function geocodeLocation(locationKey, album, locationName, locationSource, penny = null) {
     console.log('DEBUG - Processing location:', locationKey, 'for album:', album.name, 'source:', locationSource);
     
     let coords = null;
@@ -4172,7 +4265,7 @@ async function geocodeLocation(locationKey, album, locationName, locationSource)
     
     // Add marker to map with the coordinates (only if not already added by updateMapMarkers)
     if (coords) {
-        addMarkerToMap(coords, album, locationName);
+        addMarkerToMap(coords, album, locationName, locationSource, penny);
     }
 }
 
@@ -4346,7 +4439,7 @@ async function clearAllGeocodingCache() {
     }
 }
 
-function addMarkerToMap(coords, album, locationName) {
+function addMarkerToMap(coords, album, locationName, locationSource = 'album', penny = null) {
     if (!map) return;
     
     // Create a traditional tear-drop marker
@@ -4360,11 +4453,32 @@ function addMarkerToMap(coords, album, locationName) {
         })
     });
     
-    // Create popup content
+    // Determine the date to display based on location source
+    let displayDate = '';
+    let dateLabel = '';
+    
+    if (locationSource === 'album') {
+        // Use album trip date
+        if (album.tripDate) {
+            displayDate = formatDateForDisplay(album.tripDate);
+            dateLabel = 'Date';
+        }
+    } else if (locationSource === 'penny' && penny) {
+        // Use penny collection date
+        if (penny.dateCollected) {
+            displayDate = formatDateForDisplay(penny.dateCollected);
+            dateLabel = 'Date';
+        }
+    }
+    
+    // Create popup content with date information
     const popupContent = `
         <div class="map-popup">
             <h4>${album.name}</h4>
-            <p><strong>Location:</strong> ${locationName}</p>
+            <div class="popup-info">
+                <p><strong>Location:</strong> ${locationName}</p>
+                ${displayDate ? `<p><strong>${dateLabel}:</strong> ${displayDate}</p>` : ''}
+            </div>
             <button class="map-popup-btn" onclick="openAlbumFromMap('${album.id}')">
                 <i class="fas fa-folder-open"></i> Open Album
             </button>
@@ -4466,6 +4580,7 @@ function testSounds() {
 
 
 function openUserGuide() {
+    closeMenu(); // Close the menu when opening user guide
     const modal = document.getElementById('userGuideModal');
     if (modal) {
         modal.style.display = 'block';
@@ -4590,6 +4705,7 @@ function closeAboutModal() {
 }
 
 function openVersionInfo() {
+    closeMenu(); // Close the menu when opening version info
     const versionInfoModal = document.getElementById('versionInfoModal');
     if (versionInfoModal) {
         versionInfoModal.style.display = 'block';
@@ -4867,6 +4983,7 @@ function changeCollectionNameIcon(icon) {
 }
 
 function openCollectionSettings() {
+    closeMenu(); // Close the menu when opening collection settings
     const currentName = collectionName;
     const modal = document.createElement('div');
     modal.className = 'modal';

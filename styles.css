@@ -1741,9 +1741,15 @@ body {
     color: #8B4513;
     font-size: 1rem;
     font-weight: 600;
+    text-align: center;
 }
 
-.map-popup p {
+.map-popup .popup-info {
+    text-align: left;
+    margin-bottom: 12px;
+}
+
+.map-popup .popup-info p {
     margin: 4px 0;
     font-size: 0.85rem;
     color: #666;
@@ -1972,40 +1978,46 @@ body {
 .last-backup-indicator {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 12px 16px;
-    background: var(--card-bg);
+    gap: 6px;
+    padding: 6px 12px;
+    background: var(--bg-primary);
+    border-radius: 6px;
     border: 1px solid var(--border-color);
-    border-radius: 8px;
-    font-size: 0.95rem;
+    transition: all 0.3s ease;
+    font-size: 0.8rem;
     color: var(--text-secondary);
-    transition: all 0.2s ease;
-    min-width: 140px;
+    font-weight: 500;
+}
+
+.last-backup-indicator:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border-color: var(--accent-primary);
 }
 
 .last-backup-indicator i {
-    color: var(--accent-color);
-    font-size: 1.1rem;
+    font-size: 1rem;
+    color: var(--accent-primary);
 }
 
 .last-backup-indicator.recent {
-    color: var(--success-color);
-    border-color: var(--success-color);
-    background: rgba(34, 197, 94, 0.1);
+    color: var(--text-secondary);
+    border-color: var(--border-color);
+    background: var(--bg-primary);
 }
 
 .last-backup-indicator.recent i {
-    color: var(--success-color);
+    color: var(--accent-primary);
 }
 
 .last-backup-indicator.old {
-    color: var(--warning-color);
-    border-color: var(--warning-color);
-    background: rgba(245, 158, 11, 0.1);
+    color: var(--text-secondary);
+    border-color: var(--accent-orange);
+    background: var(--bg-primary);
 }
 
 .last-backup-indicator.old i {
-    color: var(--warning-color);
+    color: var(--accent-orange);
 }
 
 .summary-controls {
@@ -2245,7 +2257,8 @@ body {
     cursor: pointer;
     display: flex;
     flex-direction: column;
-    height: 100%;
+    height: 0;
+    padding-bottom: 100%; /* Makes the card square (height = width) */
 }
 
 .album-card::before {
@@ -2271,22 +2284,45 @@ body {
 /* Album cover support */
 .album-card.has-cover {
     padding: 0;
+    padding-bottom: 100%; /* Maintain square aspect ratio */
 }
 
 .album-card .album-cover {
+    position: absolute;
+    top: 0;
+    left: 0;
     width: 100%;
     height: 140px;
     background-image: var(--album-cover-url);
     background-size: cover;
     background-position: center;
+    flex-shrink: 0;
 }
 
 .album-card .album-content {
-    padding: 1rem 1.25rem 1.25rem 1.25rem;
+    position: absolute;
+    top: 1.5rem;
+    left: 1.5rem;
+    right: 1.5rem;
+    bottom: 1.5rem;
     background: transparent;
     display: flex;
     flex-direction: column;
-    height: 100%;
+    height: auto;
+}
+
+.album-card.has-cover .album-content {
+    position: absolute;
+    top: 140px; /* Start below the cover image */
+    left: 1rem;
+    right: 1rem;
+    bottom: 1rem;
+    padding: 0;
+    background: transparent;
+    color: inherit;
+    justify-content: flex-start;
+    display: flex;
+    flex-direction: column;
 }
 
 .album-header {
@@ -2310,6 +2346,12 @@ body {
     font-weight: 400;
     flex: 1;
     min-height: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .album-stats {
@@ -2373,8 +2415,8 @@ body {
 
 .album-actions {
     position: absolute;
-    bottom: 12px;
-    right: 12px;
+    bottom: 0.125rem;
+    right: 0.125rem;
     display: flex;
     gap: 6px;
     opacity: 1;
@@ -2386,31 +2428,31 @@ body {
     height: 32px;
     border: none;
     border-radius: 6px;
-    background: rgba(139, 69, 19, 0.15) !important;
-    color: #8B4513 !important;
+    background: rgba(var(--accent-primary-rgb, 139, 69, 19), 0.15);
+    color: var(--accent-primary);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 0.9rem;
     transition: all 0.2s ease;
-    box-shadow: 0 2px 4px rgba(139, 69, 19, 0.1);
-    border: 1px solid rgba(139, 69, 19, 0.3) !important;
+    box-shadow: 0 2px 4px var(--shadow-primary);
+    border: 1px solid var(--border-primary);
 }
 
 .album-action-btn:hover {
-    background: rgba(139, 69, 19, 0.25) !important;
-    color: #654321 !important;
+    background: rgba(var(--accent-primary-rgb, 139, 69, 19), 0.25);
+    color: var(--accent-secondary);
     transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(139, 69, 19, 0.2);
-    border-color: rgba(139, 69, 19, 0.4) !important;
+    box-shadow: 0 4px 8px var(--shadow-secondary);
+    border-color: var(--border-hover);
 }
 
 .album-action-btn:active {
     transform: translateY(0);
-    box-shadow: 0 2px 4px rgba(139, 69, 19, 0.1);
-    background: rgba(139, 69, 19, 0.3) !important;
-    color: #654321 !important;
+    box-shadow: 0 2px 4px var(--shadow-primary);
+    background: rgba(var(--accent-primary-rgb, 139, 69, 19), 0.3);
+    color: var(--accent-secondary);
 }
 
 
