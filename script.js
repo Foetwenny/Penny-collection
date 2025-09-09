@@ -29,8 +29,10 @@ let dragStartPanY = 0;
 
 // IndexedDB Configuration
 const DB_NAME = 'PennyCollectionDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2; // Increment version to add geocoding store
 const STORE_NAME = 'albums';
+const GEOCODING_STORE_NAME = 'geocoding';
+const GEOCODING_TTL_DAYS = 30; // Cache geocoding data for 30 days
 
 // Initialize IndexedDB
 function initIndexedDB() {
@@ -56,7 +58,14 @@ function initIndexedDB() {
                 const store = database.createObjectStore(STORE_NAME, { keyPath: 'id' });
                 store.createIndex('name', 'name', { unique: false });
                 store.createIndex('createdAt', 'createdAt', { unique: false });
-                console.log('IndexedDB object store created');
+                console.log('IndexedDB albums store created');
+            }
+            
+            // Create object store for geocoding cache
+            if (!database.objectStoreNames.contains(GEOCODING_STORE_NAME)) {
+                const geocodingStore = database.createObjectStore(GEOCODING_STORE_NAME, { keyPath: 'locationKey' });
+                geocodingStore.createIndex('cachedAt', 'cachedAt', { unique: false });
+                console.log('IndexedDB geocoding store created');
             }
         };
     });
@@ -113,6 +122,148 @@ async function loadAlbumsFromIndexedDB() {
         
         request.onerror = () => {
             console.error('Failed to load albums from IndexedDB:', request.error);
+            reject(request.error);
+        };
+    });
+}
+
+// Geocoding Storage Functions
+async function saveGeocodingToIndexedDB(locationKey, coordinates) {
+    if (!db) {
+        console.error('IndexedDB not initialized');
+        return;
+    }
+    
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction([GEOCODING_STORE_NAME], 'readwrite');
+        const store = transaction.objectStore(GEOCODING_STORE_NAME);
+        
+        const geocodingData = {
+            locationKey: locationKey,
+            coordinates: coordinates,
+            cachedAt: new Date().toISOString()
+        };
+        
+        store.put(geocodingData);
+        
+        transaction.oncomplete = () => {
+            console.log(`Geocoding data saved for: ${locationKey}`);
+            resolve();
+        };
+        
+        transaction.onerror = () => {
+            console.error('Failed to save geocoding data:', transaction.error);
+            reject(transaction.error);
+        };
+    });
+}
+
+async function loadGeocodingFromIndexedDB(locationKey) {
+    if (!db) {
+        console.error('IndexedDB not initialized');
+        return null;
+    }
+    
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction([GEOCODING_STORE_NAME], 'readonly');
+        const store = transaction.objectStore(GEOCODING_STORE_NAME);
+        const request = store.get(locationKey);
+        
+        request.onsuccess = () => {
+            const result = request.result;
+            if (result) {
+                // Check if data is still valid (not expired)
+                const cachedDate = new Date(result.cachedAt);
+                const now = new Date();
+                const daysDiff = (now - cachedDate) / (1000 * 60 * 60 * 24);
+                
+                if (daysDiff < GEOCODING_TTL_DAYS) {
+                    console.log(`Using cached geocoding for: ${locationKey} (${Math.round(daysDiff)} days old)`);
+                    resolve(result.coordinates);
+                } else {
+                    console.log(`Geocoding data expired for: ${locationKey} (${Math.round(daysDiff)} days old)`);
+                    resolve(null);
+                }
+            } else {
+                resolve(null);
+            }
+        };
+        
+        request.onerror = () => {
+            console.error('Failed to load geocoding data:', request.error);
+            reject(request.error);
+        };
+    });
+}
+
+async function loadAllGeocodingFromIndexedDB() {
+    if (!db) {
+        console.error('IndexedDB not initialized');
+        return new Map();
+    }
+    
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction([GEOCODING_STORE_NAME], 'readonly');
+        const store = transaction.objectStore(GEOCODING_STORE_NAME);
+        const request = store.getAll();
+        
+        request.onsuccess = () => {
+            const results = request.result || [];
+            const validGeocoding = new Map();
+            const now = new Date();
+            
+            results.forEach(item => {
+                const cachedDate = new Date(item.cachedAt);
+                const daysDiff = (now - cachedDate) / (1000 * 60 * 60 * 24);
+                
+                if (daysDiff < GEOCODING_TTL_DAYS) {
+                    validGeocoding.set(item.locationKey, item.coordinates);
+                }
+            });
+            
+            console.log(`Loaded ${validGeocoding.size} valid geocoding entries from IndexedDB`);
+            resolve(validGeocoding);
+        };
+        
+        request.onerror = () => {
+            console.error('Failed to load geocoding data:', request.error);
+            reject(request.error);
+        };
+    });
+}
+
+async function clearExpiredGeocoding() {
+    if (!db) {
+        console.error('IndexedDB not initialized');
+        return;
+    }
+    
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction([GEOCODING_STORE_NAME], 'readwrite');
+        const store = transaction.objectStore(GEOCODING_STORE_NAME);
+        const index = store.index('cachedAt');
+        const now = new Date();
+        const cutoffDate = new Date(now.getTime() - (GEOCODING_TTL_DAYS * 24 * 60 * 60 * 1000));
+        
+        const request = index.openCursor(IDBKeyRange.upperBound(cutoffDate.toISOString()));
+        let deletedCount = 0;
+        
+        request.onsuccess = (event) => {
+            const cursor = event.target.result;
+            if (cursor) {
+                cursor.delete();
+                deletedCount++;
+                cursor.continue();
+            } else {
+                if (deletedCount > 0) {
+                    console.log(`Cleared ${deletedCount} expired geocoding entries`);
+                }
+                resolve();
+            }
+        };
+        
+        request.onerror = () => {
+            console.error('Failed to clear expired geocoding data:', request.error);
             reject(request.error);
         };
     });
@@ -282,6 +433,31 @@ document.addEventListener('DOMContentLoaded', async function() {
         
         // Load albums from IndexedDB
         await loadAlbumsFromIndexedDB();
+        
+        // Load geocoding cache from IndexedDB
+        geocodedLocations = await loadAllGeocodingFromIndexedDB();
+        console.log(`Loaded ${geocodedLocations.size} geocoding entries from IndexedDB`);
+        
+        // Clear expired geocoding entries in background
+        clearExpiredGeocoding().catch(error => {
+            console.warn('Failed to clear expired geocoding:', error);
+        });
+        
+        // Start background refresh of stale geocoding data after a delay
+        setTimeout(() => {
+            refreshStaleGeocodingData().catch(error => {
+                console.warn('Background geocoding refresh failed:', error);
+            });
+        }, 5000); // Wait 5 seconds after app load
+        
+        // Add global functions for testing (development only)
+        if (typeof window !== 'undefined') {
+            window.clearGeocodingCache = clearAllGeocodingCache;
+            window.getGeocodingStats = () => {
+                console.log(`In-memory cache: ${geocodedLocations.size} locations`);
+                return { inMemory: geocodedLocations.size };
+            };
+        }
         
         // Fix any duplicate penny IDs in existing albums
         fixDuplicatePennyIds();
@@ -3148,7 +3324,7 @@ function showEmptyAlbumsStateIfNeeded() {
 }
 
 // Save Collection As function to prevent data loss
-function saveCollectionAs() {
+async function saveCollectionAs() {
     // Prompt user for custom filename - use collection name as default
     const collectionNameForFile = collectionName.replace(/[<>:"/\\|?*]/g, '_').trim() || 'penny-collection';
     const defaultName = `${collectionNameForFile}-backup-${new Date().toISOString().split('T')[0]}`;
@@ -3165,45 +3341,54 @@ function saveCollectionAs() {
     // If user entered empty string, use default
     const finalName = cleanName || defaultName;
     
-    // Include collection name and styling options in export data
-    const exportData = {
-        collectionName: collectionName,
-        collectionNameFont: collectionNameFont,
-        collectionNameSize: collectionNameSize,
-        collectionNameColor: collectionNameColor,
-        collectionNameBackground: collectionNameBackground,
-        collectionNameOutline: collectionNameOutline,
-        collectionNameIcon: collectionNameIcon,
-        albums: albums,
-        exportDate: new Date().toISOString(),
-        version: "2.3"
-    };
-    
-    const dataStr = JSON.stringify(exportData, null, 2);
-    const dataBlob = new Blob([dataStr], {type: 'application/json'});
-    const url = URL.createObjectURL(dataBlob);
-    
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${finalName}.json`;
-    link.click();
-    
-    URL.revokeObjectURL(url);
-    trackLastBackupTime();
-    showNotification(`Collection saved as "${finalName}.json"!`, 'success');
+    try {
+        // Export geocoding data
+        const geocodingData = await exportGeocodingData();
+        
+        // Include collection name, styling options, and geocoding data in export
+        const exportData = {
+            collectionName: collectionName,
+            collectionNameFont: collectionNameFont,
+            collectionNameSize: collectionNameSize,
+            collectionNameColor: collectionNameColor,
+            collectionNameBackground: collectionNameBackground,
+            collectionNameOutline: collectionNameOutline,
+            collectionNameIcon: collectionNameIcon,
+            albums: albums,
+            geocodingData: geocodingData,
+            exportDate: new Date().toISOString(),
+            version: "2.4"
+        };
+        
+        const dataStr = JSON.stringify(exportData, null, 2);
+        const dataBlob = new Blob([dataStr], {type: 'application/json'});
+        const url = URL.createObjectURL(dataBlob);
+        
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${finalName}.json`;
+        link.click();
+        
+        URL.revokeObjectURL(url);
+        trackLastBackupTime();
+        showNotification(`Collection saved as "${finalName}.json" with ${geocodingData.length} cached locations!`, 'success');
+    } catch (error) {
+        console.error('Export failed:', error);
+        showNotification('Failed to export collection. Please try again.', 'error');
+    }
 }
 
 // Load Collection function to restore data with fail-safes
-function loadCollection() {
+async function loadCollection() {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.json';
     
-    input.onchange = function(e) {
+    input.onchange = async function(e) {
         const file = e.target.files[0];
         if (file) {
             const reader = new FileReader();
-            reader.onload = function(e) {
+            reader.onload = async function(e) {
                 try {
                     const importedData = JSON.parse(e.target.result);
                     
@@ -3277,6 +3462,17 @@ Do you want to continue?`;
                         } else {
                             showNotification(`Collection loaded successfully! ${importedAlbumCount} albums loaded.`, 'success');
                         }
+                        
+                        // Import geocoding data if available (version 2.4+)
+                        if (importedData.geocodingData && Array.isArray(importedData.geocodingData)) {
+                            try {
+                                await importGeocodingData(importedData.geocodingData);
+                                showNotification(`Also imported ${importedData.geocodingData.length} cached map locations!`, 'info');
+                            } catch (error) {
+                                console.warn('Failed to import geocoding data:', error);
+                                showNotification('Collection loaded, but map locations will need to be geocoded again.', 'warning');
+                            }
+                        }
                     }
                     
                     saveAlbumsToStorage();
@@ -3295,45 +3491,83 @@ Do you want to continue?`;
 }
 
 // Share single album function
-function shareAlbum(albumId) {
+async function shareAlbum(albumId) {
     const album = albums.find(a => a.id === albumId);
     if (!album) {
         showNotification('Album not found.', 'error');
         return;
     }
     
-    // Create album data for sharing - format it as a single album in an array
-    // so it can be imported using the existing loadCollection function
-    const albumData = [{
-        id: album.id,
-        name: album.name,
-        description: album.description,
-        categories: album.categories || [],
-        tripDate: album.tripDate,
-        location: album.location,
-        locationUrl: album.locationUrl,
-        imageUrl: album.imageUrl,
-        pennies: album.pennies,
-        createdAt: album.createdAt,
-        lastModified: album.lastModified || album.createdAt
-    }];
-    
-    // Create and download the file
-    const albumStr = JSON.stringify(albumData, null, 2);
-    const albumBlob = new Blob([albumStr], {type: 'application/json'});
-    const albumUrl = URL.createObjectURL(albumBlob);
-    
-    const link = document.createElement('a');
-    link.href = albumUrl;
-    link.download = `${album.name}.json`;
-    link.style.display = 'none';
-    
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    URL.revokeObjectURL(albumUrl);
-    showNotification(`Album "${album.name}" shared successfully!`, 'success');
+    try {
+        // Get relevant geocoding data for this album's locations
+        const relevantGeocodingData = [];
+        
+        // Check album location
+        if (album.locationUrl && geocodedLocations.has(album.locationUrl)) {
+            relevantGeocodingData.push({
+                locationKey: album.locationUrl,
+                coordinates: geocodedLocations.get(album.locationUrl),
+                cachedAt: new Date().toISOString() // Use current time as fallback
+            });
+        }
+        
+        // Check penny locations
+        if (album.pennies) {
+            album.pennies.forEach(penny => {
+                if (penny.locationUrl && geocodedLocations.has(penny.locationUrl)) {
+                    relevantGeocodingData.push({
+                        locationKey: penny.locationUrl,
+                        coordinates: geocodedLocations.get(penny.locationUrl),
+                        cachedAt: new Date().toISOString() // Use current time as fallback
+                    });
+                }
+            });
+        }
+        
+        // Create album data for sharing - format it as a single album in an array
+        // so it can be imported using the existing loadCollection function
+        const albumData = [{
+            id: album.id,
+            name: album.name,
+            description: album.description,
+            categories: album.categories || [],
+            tripDate: album.tripDate,
+            location: album.location,
+            locationUrl: album.locationUrl,
+            imageUrl: album.imageUrl,
+            pennies: album.pennies,
+            createdAt: album.createdAt,
+            lastModified: album.lastModified || album.createdAt
+        }];
+        
+        // Create export data with geocoding information
+        const exportData = {
+            albums: albumData,
+            geocodingData: relevantGeocodingData,
+            exportDate: new Date().toISOString(),
+            version: "2.4"
+        };
+        
+        // Create and download the file
+        const albumStr = JSON.stringify(exportData, null, 2);
+        const albumBlob = new Blob([albumStr], {type: 'application/json'});
+        const albumUrl = URL.createObjectURL(albumBlob);
+        
+        const link = document.createElement('a');
+        link.href = albumUrl;
+        link.download = `${album.name}.json`;
+        link.style.display = 'none';
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        URL.revokeObjectURL(albumUrl);
+        showNotification(`Album "${album.name}" shared successfully with ${relevantGeocodingData.length} cached locations!`, 'success');
+    } catch (error) {
+        console.error('Share album failed:', error);
+        showNotification('Failed to share album. Please try again.', 'error');
+    }
 }
 
 // Import shared album function - adds to existing collection
@@ -3625,6 +3859,11 @@ function openMapView() {
         // Play modal swish sound
         playSound('modalSwish');
         
+        // Show notification about cached data if available
+        if (geocodedLocations.size > 0) {
+            showNotification(`Loading map with ${geocodedLocations.size} cached locations...`, 'info');
+        }
+        
         // Initialize map if not already done
         if (!map) {
             initializeMap();
@@ -3728,39 +3967,70 @@ function updateMapMarkers() {
     });
     
     console.log('DEBUG - Found', locationMap.size, 'unique locations');
+    console.log('DEBUG - Available cached locations:', geocodedLocations.size);
+    console.log('DEBUG - Cached location keys:', Array.from(geocodedLocations.keys()));
     
     if (locationMap.size === 0) {
         showNotification('No location data found', 'info');
         return;
     }
     
-    // Geocode each unique location and add markers (with delay to avoid rate limiting)
-    let geocodingPromises = [];
+    // Process locations with cached data first, then geocode new ones
+    let cachedCount = 0;
+    let newGeocodingPromises = [];
     let delay = 0;
-    locationMap.forEach((data, locationKey) => {
-        console.log('DEBUG - Geocoding location:', locationKey);
-        // Add delay between requests to avoid rate limiting
-        geocodingPromises.push(
-            new Promise(resolve => {
-                setTimeout(() => {
-                    geocodeLocation(locationKey, data.album, data.locationName, data.locationSource)
-                        .then(resolve)
-                        .catch(resolve);
-                }, delay);
-                delay += 1000; // 1 second delay between requests
-            })
-        );
-    });
     
-    // Wait for all geocoding to complete and show summary
-    Promise.allSettled(geocodingPromises).then(results => {
-        const successful = results.filter(r => r.status === 'fulfilled').length;
-        const failed = results.filter(r => r.status === 'rejected').length;
-        console.log(`DEBUG - Geocoding complete: ${successful} successful, ${failed} failed`);
-        if (failed > 0) {
-            console.log('Failed locations:', results.filter(r => r.status === 'rejected').map(r => r.reason));
+    // First pass: Add markers for cached locations immediately
+    locationMap.forEach((data, locationKey) => {
+        console.log('DEBUG - Processing location:', locationKey);
+        
+        // Check if we have cached coordinates
+        if (geocodedLocations.has(locationKey)) {
+            const coords = geocodedLocations.get(locationKey);
+            console.log('DEBUG - Using cached coordinates for:', locationKey, coords);
+            addMarkerToMap(coords, data.album, data.locationName);
+            cachedCount++;
+        } else {
+            // Schedule geocoding for non-cached locations
+            console.log('DEBUG - Scheduling geocoding for:', locationKey);
+            console.log('DEBUG - Location key not found in cache. Available keys:', Array.from(geocodedLocations.keys()));
+            newGeocodingPromises.push(
+                new Promise(resolve => {
+                    setTimeout(() => {
+                        geocodeLocation(locationKey, data.album, data.locationName, data.locationSource)
+                            .then(resolve)
+                            .catch(resolve);
+                    }, delay);
+                    delay += 1000; // 1 second delay between requests
+                })
+            );
         }
     });
+    
+    // Show immediate feedback for cached data
+    if (cachedCount > 0) {
+        console.log(`DEBUG - Added ${cachedCount} markers from cache immediately`);
+        if (newGeocodingPromises.length > 0) {
+            showNotification(`Map loaded with ${cachedCount} cached locations. Geocoding ${newGeocodingPromises.length} new locations...`, 'info');
+        } else {
+            showNotification(`Map loaded with ${cachedCount} cached locations!`, 'success');
+        }
+    }
+    
+    // Process new geocoding in background
+    if (newGeocodingPromises.length > 0) {
+        Promise.allSettled(newGeocodingPromises).then(results => {
+            const successful = results.filter(r => r.status === 'fulfilled').length;
+            const failed = results.filter(r => r.status === 'rejected').length;
+            console.log(`DEBUG - New geocoding complete: ${successful} successful, ${failed} failed`);
+            if (successful > 0) {
+                showNotification(`Added ${successful} new locations to map!`, 'success');
+            }
+            if (failed > 0) {
+                console.log('Failed locations:', results.filter(r => r.status === 'rejected').map(r => r.reason));
+            }
+        });
+    }
 }
 
 async function geocodeLocation(locationKey, album, locationName, locationSource) {
@@ -3818,6 +4088,15 @@ async function geocodeLocation(locationKey, album, locationName, locationSource)
             console.log('DEBUG - Extracted coordinates from URL:', coords);
             console.log('DEBUG - Original URL:', locationKey);
             console.log('DEBUG - Final Lat:', finalLat, 'Lng:', finalLng);
+            
+            // Save to persistent storage and update in-memory cache
+            try {
+                await saveGeocodingToIndexedDB(locationKey, coords);
+                // Also update the in-memory cache immediately
+                geocodedLocations.set(locationKey, coords);
+            } catch (error) {
+                console.warn('Failed to save geocoding to IndexedDB:', error);
+            }
         } else {
             console.warn('Could not extract coordinates from URL:', locationKey);
             return;
@@ -3826,11 +4105,26 @@ async function geocodeLocation(locationKey, album, locationName, locationSource)
         // Fallback to geocoding for non-URL locations
         console.log('DEBUG - Geocoding non-URL location:', locationKey);
         
-        // Check cache first
-        if (geocodedLocations.has(locationKey)) {
+        // Check persistent cache first
+        try {
+            coords = await loadGeocodingFromIndexedDB(locationKey);
+            if (coords) {
+                console.log('DEBUG - Using persistent cached coordinates:', coords);
+                // Update in-memory cache
+                geocodedLocations.set(locationKey, coords);
+            }
+        } catch (error) {
+            console.warn('Failed to load from persistent cache:', error);
+        }
+        
+        // If not in persistent cache, check in-memory cache
+        if (!coords && geocodedLocations.has(locationKey)) {
             coords = geocodedLocations.get(locationKey);
-            console.log('DEBUG - Using cached coordinates:', coords);
-        } else {
+            console.log('DEBUG - Using in-memory cached coordinates:', coords);
+        }
+        
+        // If still no coordinates, geocode from API
+        if (!coords) {
             try {
                 // Use Nominatim (free) geocoding service
                 const geocodeUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(locationKey)}&limit=1`;
@@ -3845,8 +4139,14 @@ async function geocodeLocation(locationKey, album, locationName, locationSource)
                     coords = [parseFloat(data[0].lat), parseFloat(data[0].lon)];
                     console.log('DEBUG - Got coordinates from geocoding:', coords);
                     
-                    // Cache the result
-                    geocodedLocations.set(locationKey, coords);
+                    // Cache in both in-memory and persistent storage
+                    try {
+                        await saveGeocodingToIndexedDB(locationKey, coords);
+                        // Also update the in-memory cache immediately
+                        geocodedLocations.set(locationKey, coords);
+                    } catch (error) {
+                        console.warn('Failed to save geocoding to IndexedDB:', error);
+                    }
                 } else {
                     console.warn(`Could not geocode location: ${locationKey}`);
                     return;
@@ -3858,9 +4158,179 @@ async function geocodeLocation(locationKey, album, locationName, locationSource)
         }
     }
     
-    // Add marker to map with the coordinates
+    // Add marker to map with the coordinates (only if not already added by updateMapMarkers)
     if (coords) {
         addMarkerToMap(coords, album, locationName);
+    }
+}
+
+// Background refresh function for stale geocoding data
+async function refreshStaleGeocodingData() {
+    if (!db) {
+        console.log('IndexedDB not available for background refresh');
+        return;
+    }
+    
+    try {
+        // Get all geocoding data
+        const transaction = db.transaction([GEOCODING_STORE_NAME], 'readonly');
+        const store = transaction.objectStore(GEOCODING_STORE_NAME);
+        const request = store.getAll();
+        
+        request.onsuccess = async () => {
+            const results = request.result || [];
+            const now = new Date();
+            const refreshThreshold = new Date(now.getTime() - (GEOCODING_TTL_DAYS * 0.8 * 24 * 60 * 60 * 1000)); // Refresh at 80% of TTL
+            
+            const staleEntries = results.filter(item => {
+                const cachedDate = new Date(item.cachedAt);
+                return cachedDate < refreshThreshold;
+            });
+            
+            if (staleEntries.length > 0) {
+                console.log(`Found ${staleEntries.length} stale geocoding entries, refreshing in background...`);
+                
+                // Refresh stale entries with delay to avoid rate limiting
+                for (let i = 0; i < staleEntries.length; i++) {
+                    const entry = staleEntries[i];
+                    try {
+                        // Re-geocode the location
+                        const geocodeUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(entry.locationKey)}&limit=1`;
+                        const response = await fetch(geocodeUrl);
+                        const data = await response.json();
+                        
+                        if (data && data.length > 0) {
+                            const newCoords = [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+                            
+                            // Update both persistent and in-memory cache
+                            await saveGeocodingToIndexedDB(entry.locationKey, newCoords);
+                            geocodedLocations.set(entry.locationKey, newCoords);
+                            
+                            console.log(`Refreshed geocoding for: ${entry.locationKey}`);
+                        }
+                        
+                        // Add delay between requests
+                        if (i < staleEntries.length - 1) {
+                            await new Promise(resolve => setTimeout(resolve, 1000));
+                        }
+                    } catch (error) {
+                        console.warn(`Failed to refresh geocoding for ${entry.locationKey}:`, error);
+                    }
+                }
+                
+                console.log('Background geocoding refresh completed');
+            }
+        };
+        
+        request.onerror = () => {
+            console.warn('Failed to check for stale geocoding data:', request.error);
+        };
+    } catch (error) {
+        console.warn('Background geocoding refresh failed:', error);
+    }
+}
+
+// Function to export all geocoding data for collection backup
+async function exportGeocodingData() {
+    if (!db) {
+        console.error('IndexedDB not initialized');
+        return [];
+    }
+    
+    try {
+        const transaction = db.transaction([GEOCODING_STORE_NAME], 'readonly');
+        const store = transaction.objectStore(GEOCODING_STORE_NAME);
+        const request = store.getAll();
+        
+        return new Promise((resolve, reject) => {
+            request.onsuccess = () => {
+                const results = request.result || [];
+                console.log(`Exporting ${results.length} geocoding entries`);
+                resolve(results);
+            };
+            
+            request.onerror = () => {
+                console.error('Failed to export geocoding data:', request.error);
+                reject(request.error);
+            };
+        });
+    } catch (error) {
+        console.error('Error exporting geocoding data:', error);
+        return [];
+    }
+}
+
+// Function to import geocoding data from collection backup
+async function importGeocodingData(geocodingData) {
+    if (!db || !geocodingData || !Array.isArray(geocodingData)) {
+        console.log('No geocoding data to import or IndexedDB not available');
+        return;
+    }
+    
+    try {
+        const transaction = db.transaction([GEOCODING_STORE_NAME], 'readwrite');
+        const store = transaction.objectStore(GEOCODING_STORE_NAME);
+        
+        // Clear existing geocoding data
+        store.clear();
+        
+        // Add imported geocoding data
+        geocodingData.forEach(item => {
+            store.add(item);
+        });
+        
+        return new Promise((resolve, reject) => {
+            transaction.oncomplete = () => {
+                console.log(`Imported ${geocodingData.length} geocoding entries`);
+                // Update in-memory cache
+                geocodedLocations.clear();
+                geocodingData.forEach(item => {
+                    geocodedLocations.set(item.locationKey, item.coordinates);
+                });
+                console.log(`Updated in-memory cache with ${geocodedLocations.size} entries`);
+                resolve();
+            };
+            
+            transaction.onerror = () => {
+                console.error('Failed to import geocoding data:', transaction.error);
+                reject(transaction.error);
+            };
+        });
+    } catch (error) {
+        console.error('Error importing geocoding data:', error);
+    }
+}
+
+// Function to manually clear all geocoding cache (useful for debugging or full refresh)
+async function clearAllGeocodingCache() {
+    if (!db) {
+        console.error('IndexedDB not initialized');
+        return false;
+    }
+    
+    try {
+        const transaction = db.transaction([GEOCODING_STORE_NAME], 'readwrite');
+        const store = transaction.objectStore(GEOCODING_STORE_NAME);
+        
+        return new Promise((resolve, reject) => {
+            const request = store.clear();
+            
+            request.onsuccess = () => {
+                // Also clear in-memory cache
+                geocodedLocations.clear();
+                console.log('All geocoding cache cleared');
+                showNotification('Geocoding cache cleared. Map will reload fresh data.', 'info');
+                resolve(true);
+            };
+            
+            request.onerror = () => {
+                console.error('Failed to clear geocoding cache:', request.error);
+                reject(request.error);
+            };
+        });
+    } catch (error) {
+        console.error('Error clearing geocoding cache:', error);
+        return false;
     }
 }
 
