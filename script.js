@@ -272,6 +272,12 @@ async function clearExpiredGeocoding() {
 // Migrate data from localStorage to IndexedDB
 async function migrateFromLocalStorage() {
     try {
+        // Check if migration has already been completed
+        if (localStorage.getItem('migrationCompleted')) {
+            console.log('Migration already completed, skipping');
+            return false;
+        }
+        
         // Check if we have data in localStorage
         const localData = localStorage.getItem('pennyAlbums') || localStorage.getItem('pennyCollection');
         
@@ -286,9 +292,15 @@ async function migrateFromLocalStorage() {
                 // Save to IndexedDB
                 await saveAlbumsToIndexedDB();
                 
-                // Clear localStorage (optional - we can keep it as backup)
-                // localStorage.removeItem('pennyAlbums');
-                // localStorage.removeItem('pennyCollection');
+                // Clear localStorage after successful migration
+                localStorage.removeItem('pennyAlbums');
+                localStorage.removeItem('pennyCollection');
+                
+                // Mark migration as completed
+                localStorage.setItem('migrationCompleted', 'true');
+                
+                // Show migration success notification
+                showNotification('Collection migrated to new storage system successfully!', 'success');
                 
                 console.log('Migration completed successfully');
                 return true;
