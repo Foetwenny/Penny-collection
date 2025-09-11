@@ -6,6 +6,7 @@ let currentImageData = null;
 let currentAnalysis = null;
 let isSharedView = false; // Track if we're viewing a shared album
 let currentPennyIndex = -1; // Track current penny index for navigation
+let currentPennyId = null; // Track current penny ID for navigation
 let currentPennySearchTerm = ''; // Track search term for navigation context
 let currentDisplayOrder = []; // Track current display order of pennies for navigation
 
@@ -2481,6 +2482,11 @@ function renderAlbumPenniesWithSearchHighlights() {
     // Store the current display order for navigation
     currentDisplayOrder = reorderedPennies.map(penny => penny.id);
     
+    // Update current penny index if penny view is open to match new order
+    if (currentPennyIndex >= 0 && currentPennyId) {
+        currentPennyIndex = currentDisplayOrder.indexOf(currentPennyId);
+    }
+    
     if (reorderedPennies.length === 0) {
         penniesGrid.innerHTML = `
             <div class="empty-state">
@@ -2573,6 +2579,11 @@ function renderAlbumPenniesNormal() {
     
     // Store the current display order for navigation
     currentDisplayOrder = penniesToRender.map(penny => penny.id);
+    
+    // Update current penny index if penny view is open to match new order
+    if (currentPennyIndex >= 0 && currentPennyId) {
+        currentPennyIndex = currentDisplayOrder.indexOf(currentPennyId);
+    }
     
     penniesGrid.innerHTML = penniesToRender.map((penny, index) => {
         // Don't add cache-busting to base64 data URLs
@@ -2768,6 +2779,7 @@ function openPennyView(pennyId, searchTerm = '', skipIndexUpdate = false) {
     // Track current penny index and search term for navigation
     // Only recalculate index if not explicitly skipped (for navigation)
     if (!skipIndexUpdate) {
+        currentPennyId = pennyId; // Store current penny ID
         if (currentDisplayOrder.length > 0) {
             currentPennyIndex = currentDisplayOrder.indexOf(pennyId);
         } else {
@@ -2863,6 +2875,7 @@ function closePennyViewModal() {
     
     // Reset navigation state
     currentPennyIndex = -1;
+    currentPennyId = null;
     currentPennySearchTerm = '';
     
     // Reset zoom and pan
