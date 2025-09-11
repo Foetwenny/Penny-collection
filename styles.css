@@ -175,6 +175,33 @@
     --shadow-secondary: rgba(139, 69, 19, 0.5);
     --shadow-accent: rgba(122, 140, 255, 0.4);
     --shadow-button: rgba(255, 107, 107, 0.5);
+    --accent-primary: #7a8cff;
+    --accent-secondary: #8b5cf6;
+    --accent-gold: #ffd700;
+    --accent-orange: #f97316;
+    --search-highlight-bg: #f97316;
+    --search-highlight-text: white;
+}
+
+/* Vintage Theme Colors */
+[data-theme="vintage"] {
+    --bg-primary: linear-gradient(135deg, #8b4513 0%, #a0522d 50%, #cd853f 100%);
+    --bg-secondary: #f4e4bc;
+    --bg-tertiary: #faf0e6;
+    --bg-hover: #f0d9a6;
+    --bg-dragover: #e6d19a;
+    --text-primary: #5d2f08;
+    --text-secondary: #6b3410;
+    --text-tertiary: #8b4513;
+    --text-muted: #a0522d;
+    --text-light: #cd853f;
+    --border-primary: #8b4513;
+    --border-secondary: #a0522d;
+    --border-hover: #cd853f;
+    --shadow-primary: rgba(139, 69, 19, 0.3);
+    --shadow-secondary: rgba(160, 82, 45, 0.4);
+    --shadow-accent: rgba(122, 140, 255, 0.4);
+    --shadow-button: rgba(255, 107, 107, 0.5);
     --accent-primary: #d4a574;
     --accent-secondary: #b8945f;
     --accent-gold: #ffd700;
@@ -4486,6 +4513,10 @@ body {
 
 .dark-theme {
     background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #404040 100%);
+}
+
+.vintage-theme {
+    background: linear-gradient(135deg, #8b4513 0%, #a0522d 50%, #cd853f 100%);
 }
 
 .ocean-theme {

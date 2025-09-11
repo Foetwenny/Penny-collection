@@ -594,8 +594,16 @@ function initializeTheme() {
         document.documentElement.removeAttribute('data-theme');
     }
     
-    // Update dark mode state to match theme
-    isDarkMode = (savedTheme === 'dark');
+    // Dark mode is independent of theme selection
+    // Load dark mode state from localStorage
+    const savedDarkMode = localStorage.getItem('darkMode') === 'true';
+    isDarkMode = savedDarkMode;
+    
+    // Apply dark mode if enabled
+    if (isDarkMode) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+    }
+    
     updateDarkModeToggleIcon();
 }
 
@@ -603,10 +611,19 @@ function toggleDarkMode() {
     isDarkMode = !isDarkMode;
     localStorage.setItem('darkMode', isDarkMode);
     
+    // Get the currently selected theme
+    const currentTheme = localStorage.getItem('selectedTheme') || 'default';
+    
     if (isDarkMode) {
+        // Apply dark mode overlay to current theme
         document.documentElement.setAttribute('data-theme', 'dark');
     } else {
-        document.documentElement.removeAttribute('data-theme');
+        // Remove dark mode, restore to selected theme
+        if (currentTheme !== 'default') {
+            document.documentElement.setAttribute('data-theme', currentTheme);
+        } else {
+            document.documentElement.removeAttribute('data-theme');
+        }
     }
     
     updateDarkModeToggleIcon();
@@ -623,25 +640,27 @@ function updateDarkModeToggleIcon() {
 }
 
 function changeTheme(themeName) {
-    // Remove existing theme attribute
-    document.documentElement.removeAttribute('data-theme');
-    
-    // Apply new theme (except for default)
-    if (themeName !== 'default') {
-        document.documentElement.setAttribute('data-theme', themeName);
-    }
-    
     // Save theme preference
     localStorage.setItem('selectedTheme', themeName);
     
     // Update theme selection in UI
     updateThemeSelection(themeName);
     
-    // Update dark mode toggle to match theme
+    // When selecting a color scheme, disable dark mode so the scheme can take effect
     const darkModeToggle = document.getElementById('darkModeToggle');
-    if (darkModeToggle) {
-        darkModeToggle.checked = (themeName === 'dark');
-        isDarkMode = (themeName === 'dark');
+    if (darkModeToggle && darkModeToggle.checked) {
+        // Uncheck dark mode toggle
+        darkModeToggle.checked = false;
+        isDarkMode = false;
+        localStorage.setItem('darkMode', false);
+        updateDarkModeToggleIcon();
+    }
+    
+    // Apply the selected theme
+    if (themeName !== 'default') {
+        document.documentElement.setAttribute('data-theme', themeName);
+    } else {
+        document.documentElement.removeAttribute('data-theme');
     }
     
     // Play sound feedback
@@ -650,7 +669,7 @@ function changeTheme(themeName) {
     // Show notification
     const themeNames = {
         'default': 'Default',
-        'dark': 'Dark',
+        'vintage': 'Vintage',
         'ocean': 'Ocean',
         'neon': 'Neon',
         'forest': 'Forest',
@@ -2424,6 +2443,38 @@ function renderAlbumPenniesWithSearchHighlights() {
         }
     });
     
+    // Apply sort settings to both matching and non-matching groups
+    if (currentAlbum.pennySortSettings) {
+        const { field, direction } = currentAlbum.pennySortSettings;
+        const sortFunction = (a, b) => {
+            let aValue, bValue;
+            
+            if (field === 'name') {
+                aValue = a.name ? a.name.toLowerCase() : '';
+                bValue = b.name ? b.name.toLowerCase() : '';
+            } else if (field === 'date') {
+                aValue = new Date(a.dateCollected || '1900-01-01');
+                bValue = new Date(b.dateCollected || '1900-01-01');
+            } else if (field === 'location') {
+                aValue = a.location ? a.location.toLowerCase() : '';
+                bValue = b.location ? b.location.toLowerCase() : '';
+            }
+            
+            if (direction === 'asc') {
+                if (aValue < bValue) return -1;
+                if (aValue > bValue) return 1;
+                return 0;
+            } else {
+                if (aValue > bValue) return -1;
+                if (aValue < bValue) return 1;
+                return 0;
+            }
+        };
+        
+        matchingPennies.sort(sortFunction);
+        nonMatchingPennies.sort(sortFunction);
+    }
+    
     // Combine arrays: matching pennies first, then non-matching
     const reorderedPennies = [...matchingPennies, ...nonMatchingPennies];
     
@@ -2490,10 +2541,40 @@ function renderAlbumPenniesNormal() {
     // Clear the grid first to force re-render
     penniesGrid.innerHTML = '';
     
-    // Store the current display order for navigation (normal order)
-    currentDisplayOrder = currentAlbum.pennies.map(penny => penny.id);
+    // Apply saved sort settings if they exist
+    let penniesToRender = [...currentAlbum.pennies];
+    if (currentAlbum.pennySortSettings) {
+        const { field, direction } = currentAlbum.pennySortSettings;
+        penniesToRender.sort((a, b) => {
+            let aValue, bValue;
+            
+            if (field === 'name') {
+                aValue = a.name ? a.name.toLowerCase() : '';
+                bValue = b.name ? b.name.toLowerCase() : '';
+            } else if (field === 'date') {
+                aValue = new Date(a.dateCollected || '1900-01-01');
+                bValue = new Date(b.dateCollected || '1900-01-01');
+            } else if (field === 'location') {
+                aValue = a.location ? a.location.toLowerCase() : '';
+                bValue = b.location ? b.location.toLowerCase() : '';
+            }
+            
+            if (direction === 'asc') {
+                if (aValue < bValue) return -1;
+                if (aValue > bValue) return 1;
+                return 0;
+            } else {
+                if (aValue > bValue) return -1;
+                if (aValue < bValue) return 1;
+                return 0;
+            }
+        });
+    }
     
-    penniesGrid.innerHTML = currentAlbum.pennies.map((penny, index) => {
+    // Store the current display order for navigation
+    currentDisplayOrder = penniesToRender.map(penny => penny.id);
+    
+    penniesGrid.innerHTML = penniesToRender.map((penny, index) => {
         // Don't add cache-busting to base64 data URLs
         const imageSrc = penny.imageData.startsWith('data:') ? penny.imageData : `${penny.imageData}${penny.imageUpdated ? '?t=' + penny.imageUpdated : ''}`;
         return `
@@ -2757,7 +2838,15 @@ function closePennyViewModal() {
     document.getElementById('pennyViewModal').style.display = 'none';
     
     // Restore background scrolling when modal is closed
-    document.body.style.overflow = '';
+    // Check if we're in album view and preserve that overflow state
+    const albumViewScreen = document.getElementById('albumViewScreen');
+    if (albumViewScreen && albumViewScreen.style.display === 'block') {
+        // We're in album view, keep body overflow hidden
+        document.body.style.overflow = 'hidden';
+    } else {
+        // We're not in album view, restore normal scrolling
+        document.body.style.overflow = '';
+    }
     
     // Remove touch event handlers
     removePennyViewTouchHandlers();
@@ -3273,13 +3362,59 @@ function openPennySortOptions() {
     // Show the penny sort modal
     document.getElementById('pennySortOptionsModal').style.display = 'block';
     
+    // Load current sort settings for this album with a small delay
+    // to ensure modal is fully rendered
+    setTimeout(() => {
+        loadCurrentPennySortSettings();
+    }, 50);
+    
     // Play sound
     playSound('menuClick');
+}
+
+function loadCurrentPennySortSettings() {
+    if (!currentAlbum) return;
+    
+    // Get the current sort settings for this album (default to name, asc if none set)
+    const sortSettings = currentAlbum.pennySortSettings || { field: 'name', direction: 'asc' };
+    
+    // Clear all radio buttons first
+    document.querySelectorAll('input[name="pennySort"]').forEach(radio => {
+        radio.checked = false;
+    });
+    
+    // Set the radio button
+    const radio = document.querySelector(`input[name="pennySort"][value="${sortSettings.field}"]`);
+    if (radio) {
+        radio.checked = true;
+    }
+    
+    // Remove active class from all direction buttons
+    document.querySelectorAll('.sort-direction-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Add active class to the correct direction button
+    const activeButton = document.querySelector(`[data-sort="${sortSettings.field}"][data-direction="${sortSettings.direction}"]`);
+    if (activeButton) {
+        activeButton.classList.add('active');
+    }
 }
 
 function closePennySortOptions() {
     // Hide the penny sort modal
     document.getElementById('pennySortOptionsModal').style.display = 'none';
+    
+    // Reset modal state to prevent interference with other albums
+    // This ensures clean state when modal is reopened
+    setTimeout(() => {
+        document.querySelectorAll('input[name="pennySort"]').forEach(radio => {
+            radio.checked = false;
+        });
+        document.querySelectorAll('.sort-direction-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+    }, 100); // Small delay to ensure modal is fully closed
 }
 
 function selectPennySortDirection(sortField, direction) {
@@ -3356,6 +3491,9 @@ function sortPenniesInAlbum(field, direction) {
     // Update the current album's pennies array
     currentAlbum.pennies = penniesCopy;
     currentAlbum.updatedAt = new Date().toISOString();
+    
+    // Save the sort settings to the album
+    currentAlbum.pennySortSettings = { field, direction };
     
     // Save to storage
     saveAlbumsToStorage();
