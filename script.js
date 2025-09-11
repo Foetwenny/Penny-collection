@@ -2484,7 +2484,14 @@ function renderAlbumPenniesWithSearchHighlights() {
     
     // Update current penny index if penny view is open to match new order
     if (currentPennyIndex >= 0 && currentPennyId) {
-        currentPennyIndex = currentDisplayOrder.indexOf(currentPennyId);
+        const newIndex = currentDisplayOrder.indexOf(currentPennyId);
+        console.log('Updating penny index due to search display order change:', {
+            currentPennyId: currentPennyId,
+            oldIndex: currentPennyIndex,
+            newIndex: newIndex,
+            displayOrder: currentDisplayOrder
+        });
+        currentPennyIndex = newIndex;
     }
     
     if (reorderedPennies.length === 0) {
@@ -2582,7 +2589,14 @@ function renderAlbumPenniesNormal() {
     
     // Update current penny index if penny view is open to match new order
     if (currentPennyIndex >= 0 && currentPennyId) {
-        currentPennyIndex = currentDisplayOrder.indexOf(currentPennyId);
+        const newIndex = currentDisplayOrder.indexOf(currentPennyId);
+        console.log('Updating penny index due to normal display order change:', {
+            currentPennyId: currentPennyId,
+            oldIndex: currentPennyIndex,
+            newIndex: newIndex,
+            displayOrder: currentDisplayOrder
+        });
+        currentPennyIndex = newIndex;
     }
     
     penniesGrid.innerHTML = penniesToRender.map((penny, index) => {
@@ -2949,32 +2963,66 @@ function handlePennyMouseUp(event) {
 
 // Penny Navigation Functions
 function navigateToPreviousPenny() {
-    if (currentPennyIndex <= 0 || currentDisplayOrder.length === 0) return;
+    const navDebugInfo = {
+        currentPennyIndex: currentPennyIndex,
+        displayOrderLength: currentDisplayOrder.length,
+        canNavigate: currentPennyIndex > 0 && currentDisplayOrder.length > 0
+    };
+    
+    console.log('navigateToPreviousPenny called:', navDebugInfo);
+    showDebugInfo('Prev Nav: ' + JSON.stringify(navDebugInfo, null, 2));
+    
+    if (currentPennyIndex <= 0 || currentDisplayOrder.length === 0) {
+        console.log('Cannot navigate previous - at beginning or no display order');
+        return;
+    }
     
     const prevIndex = currentPennyIndex - 1;
     const prevPennyId = currentDisplayOrder[prevIndex];
+    console.log('Previous penny ID:', prevPennyId, 'at index:', prevIndex);
+    
     const prevPenny = currentAlbum.pennies.find(p => p.id === prevPennyId);
     if (prevPenny) {
+        console.log('Found previous penny:', prevPenny.name);
         // Update index before opening to prevent recalculation issues
         currentPennyIndex = prevIndex;
         openPennyView(prevPenny.id, currentPennySearchTerm, true);
         // Play navigation sound
         playSound('menuClick');
+    } else {
+        console.log('Previous penny not found in album!');
     }
 }
 
 function navigateToNextPenny() {
-    if (currentDisplayOrder.length === 0 || currentPennyIndex >= currentDisplayOrder.length - 1) return;
+    const navDebugInfo = {
+        currentPennyIndex: currentPennyIndex,
+        displayOrderLength: currentDisplayOrder.length,
+        canNavigate: currentPennyIndex < currentDisplayOrder.length - 1 && currentDisplayOrder.length > 0
+    };
+    
+    console.log('navigateToNextPenny called:', navDebugInfo);
+    showDebugInfo('Next Nav: ' + JSON.stringify(navDebugInfo, null, 2));
+    
+    if (currentDisplayOrder.length === 0 || currentPennyIndex >= currentDisplayOrder.length - 1) {
+        console.log('Cannot navigate next - at end or no display order');
+        return;
+    }
     
     const nextIndex = currentPennyIndex + 1;
     const nextPennyId = currentDisplayOrder[nextIndex];
+    console.log('Next penny ID:', nextPennyId, 'at index:', nextIndex);
+    
     const nextPenny = currentAlbum.pennies.find(p => p.id === nextPennyId);
     if (nextPenny) {
+        console.log('Found next penny:', nextPenny.name);
         // Update index before opening to prevent recalculation issues
         currentPennyIndex = nextIndex;
         openPennyView(nextPenny.id, currentPennySearchTerm, true);
         // Play navigation sound
         playSound('menuClick');
+    } else {
+        console.log('Next penny not found in album!');
     }
 }
 
@@ -2984,6 +3032,44 @@ let touchStartY = 0;
 let touchEndX = 0;
 let touchEndY = 0;
 let pennyViewTouchHandlers = [];
+
+// Debug panel for mobile testing
+function showDebugInfo(message) {
+    // Remove existing debug panel
+    const existingDebug = document.getElementById('debugPanel');
+    if (existingDebug) {
+        existingDebug.remove();
+    }
+    
+    // Create debug panel
+    const debugPanel = document.createElement('div');
+    debugPanel.id = 'debugPanel';
+    debugPanel.style.cssText = `
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 10px;
+        border-radius: 5px;
+        font-size: 12px;
+        max-width: 300px;
+        z-index: 10000;
+        font-family: monospace;
+        white-space: pre-wrap;
+        word-break: break-all;
+    `;
+    debugPanel.textContent = message;
+    
+    document.body.appendChild(debugPanel);
+    
+    // Auto-remove after 3 seconds
+    setTimeout(() => {
+        if (debugPanel.parentNode) {
+            debugPanel.remove();
+        }
+    }, 3000);
+}
 
 function addPennyViewTouchHandlers() {
     const pennyViewModal = document.getElementById('pennyViewModal');
@@ -3033,13 +3119,29 @@ function handleSwipeGesture() {
     const deltaX = touchEndX - touchStartX;
     const deltaY = Math.abs(touchEndY - touchStartY);
     
+    const debugInfo = {
+        deltaX: deltaX,
+        deltaY: deltaY,
+        currentPennyIndex: currentPennyIndex,
+        currentPennyId: currentPennyId,
+        displayOrderLength: currentDisplayOrder.length,
+        displayOrder: currentDisplayOrder
+    };
+    
+    console.log('Swipe gesture:', debugInfo);
+    
+    // Show debug info on screen for mobile testing
+    showDebugInfo('Swipe: ' + JSON.stringify(debugInfo, null, 2));
+    
     // Check if it's a horizontal swipe (not too much vertical movement)
     if (Math.abs(deltaX) >= minSwipeDistance && deltaY <= maxVerticalDistance) {
         if (deltaX > 0) {
             // Swipe right - go to previous penny
+            console.log('Swiping right - previous penny');
             navigateToPreviousPenny();
         } else {
             // Swipe left - go to next penny
+            console.log('Swiping left - next penny');
             navigateToNextPenny();
         }
     }
