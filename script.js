@@ -2981,7 +2981,6 @@ function navigateToPreviousPenny() {
     };
     
     console.log('navigateToPreviousPenny called:', navDebugInfo);
-    showDebugInfo('Prev Nav: ' + JSON.stringify(navDebugInfo, null, 2));
     
     if (currentPennyIndex <= 0 || currentDisplayOrder.length === 0) {
         console.log('Cannot navigate previous - at beginning or no display order');
@@ -2997,7 +2996,6 @@ function navigateToPreviousPenny() {
         console.log('Found previous penny:', prevPenny.name);
         // Update index before opening to prevent recalculation issues
         console.log('Setting currentPennyIndex to:', prevIndex, 'from:', currentPennyIndex);
-        showDebugInfo(`Index: ${currentPennyIndex} → ${prevIndex}`);
         currentPennyIndex = prevIndex;
         openPennyView(prevPenny.id, currentPennySearchTerm, true);
         // Play navigation sound
@@ -3015,7 +3013,6 @@ function navigateToNextPenny() {
     };
     
     console.log('navigateToNextPenny called:', navDebugInfo);
-    showDebugInfo('Next Nav: ' + JSON.stringify(navDebugInfo, null, 2));
     
     if (currentDisplayOrder.length === 0 || currentPennyIndex >= currentDisplayOrder.length - 1) {
         console.log('Cannot navigate next - at end or no display order');
@@ -3031,7 +3028,6 @@ function navigateToNextPenny() {
         console.log('Found next penny:', nextPenny.name);
         // Update index before opening to prevent recalculation issues
         console.log('Setting currentPennyIndex to:', nextIndex, 'from:', currentPennyIndex);
-        showDebugInfo(`Index: ${currentPennyIndex} → ${nextIndex}`);
         currentPennyIndex = nextIndex;
         openPennyView(nextPenny.id, currentPennySearchTerm, true);
         // Play navigation sound
@@ -3144,9 +3140,6 @@ function handleSwipeGesture() {
     };
     
     console.log('Swipe gesture:', debugInfo);
-    
-    // Show debug info on screen for mobile testing
-    showDebugInfo('Swipe: ' + JSON.stringify(debugInfo, null, 2));
     
     // Check if it's a horizontal swipe (not too much vertical movement)
     if (Math.abs(deltaX) >= minSwipeDistance && deltaY <= maxVerticalDistance) {
