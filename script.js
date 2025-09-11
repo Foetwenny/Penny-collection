@@ -2491,7 +2491,10 @@ function renderAlbumPenniesWithSearchHighlights() {
             newIndex: newIndex,
             displayOrder: currentDisplayOrder
         });
-        currentPennyIndex = newIndex;
+        // CRITICAL: Only update if we found a valid index, otherwise keep current
+        if (newIndex >= 0) {
+            currentPennyIndex = newIndex;
+        }
     }
     
     if (reorderedPennies.length === 0) {
@@ -2596,7 +2599,10 @@ function renderAlbumPenniesNormal() {
             newIndex: newIndex,
             displayOrder: currentDisplayOrder
         });
-        currentPennyIndex = newIndex;
+        // CRITICAL: Only update if we found a valid index, otherwise keep current
+        if (newIndex >= 0) {
+            currentPennyIndex = newIndex;
+        }
     }
     
     penniesGrid.innerHTML = penniesToRender.map((penny, index) => {
@@ -2790,15 +2796,20 @@ function openPennyView(pennyId, searchTerm = '', skipIndexUpdate = false) {
         return;
     }
     
+    // Always update the penny ID
+    currentPennyId = pennyId;
+    
     // Track current penny index and search term for navigation
     // Only recalculate index if not explicitly skipped (for navigation)
     if (!skipIndexUpdate) {
-        currentPennyId = pennyId; // Store current penny ID
         if (currentDisplayOrder.length > 0) {
             currentPennyIndex = currentDisplayOrder.indexOf(pennyId);
         } else {
             currentPennyIndex = currentAlbum.pennies.findIndex(p => p.id === pennyId);
         }
+        console.log('openPennyView: Updated index to', currentPennyIndex, 'for penny', penny.name);
+    } else {
+        console.log('openPennyView: Skipping index update, current index is', currentPennyIndex);
     }
     currentPennySearchTerm = searchTerm;
     
@@ -2985,6 +2996,8 @@ function navigateToPreviousPenny() {
     if (prevPenny) {
         console.log('Found previous penny:', prevPenny.name);
         // Update index before opening to prevent recalculation issues
+        console.log('Setting currentPennyIndex to:', prevIndex, 'from:', currentPennyIndex);
+        showDebugInfo(`Index: ${currentPennyIndex} → ${prevIndex}`);
         currentPennyIndex = prevIndex;
         openPennyView(prevPenny.id, currentPennySearchTerm, true);
         // Play navigation sound
@@ -3017,6 +3030,8 @@ function navigateToNextPenny() {
     if (nextPenny) {
         console.log('Found next penny:', nextPenny.name);
         // Update index before opening to prevent recalculation issues
+        console.log('Setting currentPennyIndex to:', nextIndex, 'from:', currentPennyIndex);
+        showDebugInfo(`Index: ${currentPennyIndex} → ${nextIndex}`);
         currentPennyIndex = nextIndex;
         openPennyView(nextPenny.id, currentPennySearchTerm, true);
         // Play navigation sound
